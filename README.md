@@ -1,4 +1,4 @@
-# What is CAIROS?
+# What is cairos?
 
 **CAIROS** stands for **Context Aware Intelligent Runtime Operating Shell**.
 
