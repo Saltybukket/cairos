@@ -1,0 +1,101 @@
+[
+  {
+    "name": "Version prints current version",
+    "command": [
+      "python",
+      "-m",
+      "cairos.cli",
+      "--version"
+    ],
+    "expected_stdout": "0.1.0\n",
+    "expected_exit": 0
+  },
+  {
+    "name": "Expand python project",
+    "command": [
+      "python",
+      "-m",
+      "cairos.cli",
+      "expand",
+      "create python project crawler"
+    ],
+    "expected_stdout": "mkdir -p crawler && cd crawler && python3 -m venv .venv && touch main.py requirements.txt README.md && printf '.venv/\\n__pycache__/\\n*.pyc\\n' > .gitignore && git init\n",
+    "expected_exit": 0
+  },
+  {
+    "name": "Plan python project contains risk",
+    "command": [
+      "python",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "create python project crawler"
+    ],
+    "expected_stdout": "Summary: Create a Python project named crawler.\nRisk: low\nCommands:\n1. mkdir -p crawler\n2. cd crawler\n3. python3 -m venv .venv\n4. touch main.py requirements.txt README.md\n5. printf '.venv/\\n__pycache__/\\n*.pyc\\n' > .gitignore\n6. git init\nNotes:\n- Creates a local project folder and initializes git.\n",
+    "expected_exit": 0
+  },
+  {
+    "name": "Check harmless command",
+    "command": [
+      "python",
+      "-m",
+      "cairos.cli",
+      "check",
+      "ls -la"
+    ],
+    "expected_stdout": "Risk: low\nBlocked: no\nReasons:\n- no dangerous pattern detected\n",
+    "expected_exit": 0
+  },
+  {
+    "name": "Check critical root deletion",
+    "command": [
+      "python",
+      "-m",
+      "cairos.cli",
+      "check",
+      "rm -rf /"
+    ],
+    "expected_stdout": "Risk: critical\nBlocked: yes\nReasons:\n- recursive force deletion of root\n",
+    "expected_exit": 2
+  },
+  {
+    "name": "Explain git clean",
+    "command": [
+      "python",
+      "-m",
+      "cairos.cli",
+      "explain",
+      "git clean -fdx"
+    ],
+    "expected_stdout": "Command: git clean -fdx\nRisk: high\n- git clean deletes untracked and ignored files\n",
+    "expected_exit": 0
+  },
+  {
+    "name": "Expand unknown request fails",
+    "command": [
+      "python",
+      "-m",
+      "cairos.cli",
+      "expand",
+      "brew me coffee"
+    ],
+    "expected_stdout": "",
+    "expected_stderr": "# CAIROS: no matching template\n",
+    "expected_exit": 1
+  },
+  {
+    "name": "Context outputs JSON",
+    "command": [
+      "python",
+      "-m",
+      "cairos.cli",
+      "context"
+    ],
+    "expected_contains": [
+      "\"cwd\"",
+      "\"shell\"",
+      "\"system\""
+    ],
+    "expected_exit": 0
+  }
+]
