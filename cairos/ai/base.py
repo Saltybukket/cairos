@@ -21,7 +21,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from ..config import load_config
+from ..config import env_var_hint, load_config
 from ..context import collect_context
 from ..models import CommandStep, Plan, VerificationStep
 from ..rules import load_rules
@@ -55,6 +55,18 @@ def _build_payload(request: str) -> dict[str, Any]:
         "context": collect_context(max_files=max_files),
         "rules": load_rules(),
     }
+
+
+def _missing_key_message(key_env: str) -> str:
+    hints = "\n".join(f"  {line}" for line in env_var_hint(key_env))
+    return (
+        f"Missing API key environment variable: {key_env}\n\n"
+        "Set it for this shell:\n"
+        f"{hints}\n\n"
+        "Then test:\n"
+        "  cairos config ai test\n\n"
+        "For persistent setup, add it to your shell profile or a sourced secrets file."
+    )
 
 
 def _extract_json_object(raw: str) -> str:
@@ -153,14 +165,7 @@ def _openai_compatible_plan(request: str, config: dict[str, Any]) -> Plan:
     timeout = int(ai.get("timeout_seconds", 60))
     api_key = os.environ.get(key_env)
     if not api_key:
-        raise AIPlannerError(
-            f"Missing API key environment variable: {key_env}\n\n"
-            "Set it for this shell:\n"
-            f"  export {key_env}=\"your-key\"\n\n"
-            "Then test:\n"
-            "  cairos config ai test\n\n"
-            "For persistent setup, add it to your shell profile or a sourced secrets file."
-        )
+        raise AIPlannerError(_missing_key_message(key_env))
     payload = _build_payload(request)
     body = json.dumps(
         {
@@ -196,14 +201,7 @@ def _gemini_plan(request: str, config: dict[str, Any]) -> Plan:
     timeout = int(ai.get("timeout_seconds", 60))
     api_key = os.environ.get(key_env)
     if not api_key:
-        raise AIPlannerError(
-            f"Missing API key environment variable: {key_env}\n\n"
-            "Set it for this shell:\n"
-            f"  export {key_env}=\"your-key\"\n\n"
-            "Then test:\n"
-            "  cairos config ai test\n\n"
-            "For persistent setup, add it to your shell profile or a sourced secrets file."
-        )
+        raise AIPlannerError(_missing_key_message(key_env))
     payload = _build_payload(request)
     prompt = payload["system"] + "\n\n" + json.dumps({"request": request, "context": payload["context"], "rules": payload["rules"]})
     body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.1}}).encode("utf-8")
@@ -276,7 +274,8 @@ def list_models() -> str:
     key_env = ai.get("api_key_env") or "GEMINI_API_KEY"
     api_key = os.environ.get(key_env)
     if not api_key:
-        return f"{key_env} is not set.\nRun:\n  export {key_env}=\"...\""
+        hints = "\n".join(f"  {line}" for line in env_var_hint(key_env))
+        return f"{key_env} is not set.\nRun:\n{hints}"
     req = urllib.request.Request(endpoint.rstrip("/") + f"/models?key={api_key}", method="GET")
     try:
         with urllib.request.urlopen(req, timeout=int(ai.get("timeout_seconds", 60))) as response:

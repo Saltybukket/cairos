@@ -269,7 +269,7 @@
       "Configured OpenAI-compatible AI",
       "provider=openai",
       "api_key_env=MY_API_KEY",
-      "export MY_API_KEY=<your-api-key>"
+      "export MY_API_KEY=\"your-key\""
     ],
     "expected_stderr": "",
     "expected_exit": 0
@@ -1254,6 +1254,59 @@
     "command": ["python3", "-m", "cairos.cli", "setup", "this", "repo"],
     "expected_contains": ["Source: template:repo-setup", "mkdir -p src", "mkdir -p tests", "mkdir -p docs"],
     "expected_not_contains": ["CAIROS Setup"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Say hello uses deterministic echo template",
+    "command": ["python3", "-m", "cairos.cli", "plan", "say", "hello"],
+    "expected_contains": ["Summary: Print text.", "Source: template:echo", "echo hello", "Requires confirmation: no"],
+    "expected_not_contains": ["AI backend", "No deterministic template matched"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Run say hello executes safely",
+    "command": ["python3", "-m", "cairos.cli", "run", "say", "hello", "--yes"],
+    "expected_contains": ["Plan: Print text.", "hello", "Done."],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "German say uses echo template",
+    "command": ["python3", "-m", "cairos.cli", "plan", "sag", "hallo"],
+    "expected_contains": ["Source: template:echo", "echo hallo"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Directory change request explains shell limitation",
+    "command": ["python3", "-m", "cairos.cli", "plan", "go", "into", "directory", "TU-Graz", "using", "the", "find", "command"],
+    "expected_contains": ["Source: template:cd-guidance", "CAIROS cannot permanently change the parent shell directory", "find . -maxdepth 4"],
+    "expected_not_contains": ["cd TU-Graz"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Cd into name explains shell limitation",
+    "command": ["python3", "-m", "cairos.cli", "plan", "cd", "into", "TU-Graz"],
+    "expected_contains": ["Source: template:cd-guidance", "CAIROS cannot permanently change the parent shell directory", "TU-Graz"],
+    "expected_not_contains": ["cd TU-Graz"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Say hello from large directory does not need AI context",
+    "command": ["python3", "-c", "import os, tempfile; from pathlib import Path; from cairos.cli import main; tmp=tempfile.TemporaryDirectory(); root=Path(tmp.name); [((root/f'dir{i}'/'sub').mkdir(parents=True), (root/f'dir{i}'/'sub'/f'file{i}.txt').write_text('x')) for i in range(300)]; old=os.getcwd(); os.chdir(root); rc=main(['plan','say','hello']); os.chdir(old); tmp.cleanup(); raise SystemExit(rc)"],
+    "expected_contains": ["Source: template:echo", "echo hello"],
+    "expected_not_contains": ["No deterministic template matched"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Find dir returns bounded match",
+    "command": ["python3", "-c", "import os, tempfile; from pathlib import Path; from cairos.cli import main; tmp=tempfile.TemporaryDirectory(); root=Path(tmp.name); (root/'TU-Graz').mkdir(); old=os.getcwd(); os.chdir(root); rc=main(['find-dir','TU-Graz']); os.chdir(old); tmp.cleanup(); raise SystemExit(rc)"],
+    "expected_contains": ["TU-Graz"],
     "expected_stderr": "",
     "expected_exit": 0
   }

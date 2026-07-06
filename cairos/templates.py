@@ -1107,6 +1107,45 @@ def _simple_command_plan(summary: str, command: str, source: str, risk: str = "l
     )
 
 
+def _echo_plan(request: str) -> Plan | None:
+    match = re.match(r"\s*(?:say|echo|print|sag)\s+(.+?)\s*$", request, flags=re.IGNORECASE)
+    if not match:
+        return None
+    text = match.group(1).strip()
+    if not text:
+        return None
+    return _simple_command_plan("Print text.", f"echo {shlex.quote(text)}", "template:echo", confirm=False)
+
+
+def _cd_warning_plan(request: str) -> Plan | None:
+    text = request.lower()
+    if not (re.search(r"\b(?:go|cd|change)\s+(?:into|to)\s+(?:(?:directory|folder)\s+)?", text) or "using the find command" in text and "directory" in text):
+        return None
+    name = _extract_named_value(request, "any")
+    if not name:
+        match = re.search(r"(?:directory|folder)\s+([A-Za-z0-9_.-]+)", request, flags=re.IGNORECASE)
+        if not match:
+            match = re.search(r"\b(?:go|cd|change)\s+(?:into|to)\s+([A-Za-z0-9_.-]+)", request, flags=re.IGNORECASE)
+        name = match.group(1) if match else "<name>"
+    return Plan(
+        summary="Explain how to change directories from the parent shell.",
+        steps=[
+            CommandStep(
+                kind="command",
+                command=f"find . -maxdepth 4 -type d -iname {shlex.quote(name)} -print",
+                description="Print matching directory paths; use a shell wrapper to cd into one.",
+            )
+        ],
+        risk="low",
+        requires_confirmation=False,
+        notes=[
+            "CAIROS cannot permanently change the parent shell directory from a normal child process.",
+            "Use a shell wrapper around `cairos find-dir <name>` or copy one of the printed paths into `cd`.",
+        ],
+        source="template:cd-guidance",
+    )
+
+
 def _has_multiple_creation_targets(tokens: list[str], text: str) -> bool:
     """Return True when a request mentions multiple things to create."""
     target_count = 0
@@ -1147,6 +1186,14 @@ def plan_from_template(request: str) -> Plan | None:
     """Return a deterministic plan for a known request, or ``None``."""
     tokens = tokenize(request)
     text = request.lower()
+
+    echo_plan = _echo_plan(request)
+    if echo_plan:
+        return echo_plan
+
+    cd_plan = _cd_warning_plan(request)
+    if cd_plan:
+        return cd_plan
 
     if "powershell" in tokens and ("script" in tokens or "ps1" in text) and has_concept(tokens, "make"):
         return _powershell_script_plan(request)

@@ -52,6 +52,37 @@ def config_path() -> Path:
     return config_dir() / "config.json"
 
 
+def shell_guess(system: str | None = None, environ: dict[str, str] | None = None) -> str:
+    """Return a friendly shell guess for setup hints."""
+    env = os.environ if environ is None else environ
+    system_name = system or platform.system()
+    if system_name == "Windows":
+        comspec = env.get("ComSpec", "").lower()
+        if env.get("PSModulePath"):
+            return "powershell"
+        if "cmd.exe" in comspec:
+            return "cmd"
+        return "cmd/powershell"
+    shell = Path(env.get("SHELL", "")).name.lower()
+    return shell or "posix"
+
+
+def env_var_hint(name: str, shell: str | None = None) -> list[str]:
+    """Return shell-specific commands for setting an environment variable."""
+    guessed = (shell or shell_guess()).lower()
+    if "powershell" in guessed or guessed == "pwsh":
+        return [
+            f'$env:{name}="your-key"',
+            f'[Environment]::SetEnvironmentVariable("{name}", "your-key", "User")',
+        ]
+    if guessed == "cmd" or "cmd.exe" in guessed:
+        return [
+            f"set {name}=your-key",
+            f'setx {name} "your-key"',
+        ]
+    return [f'export {name}="your-key"']
+
+
 def _clone_default() -> dict[str, Any]:
     return json.loads(json.dumps(DEFAULT_CONFIG))
 
@@ -154,10 +185,11 @@ def ai_status() -> str:
     provider = ai.get("provider", "none")
     lines = ["AI configuration:", f"provider: {provider}"]
     if provider == "none":
+        openai_hint = " && ".join(env_var_hint("OPENAI_API_KEY"))
         lines.extend([
             "status: no AI backend configured",
             "local setup: cairos config ai use-ollama llama3.1",
-            "api setup: export OPENAI_API_KEY=... && cairos config ai use-openai gpt-4.1-mini",
+            f"api setup: {openai_hint} && cairos config ai use-openai gpt-4.1-mini",
         ])
     elif provider == "ollama":
         lines.append(f"model: {ai.get('model') or 'llama3.1'}")

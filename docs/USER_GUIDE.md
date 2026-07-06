@@ -305,3 +305,42 @@ Completion scripts can be printed to stdout:
 cairos completion zsh
 cairos completion powershell
 ```
+
+## Changing Directories
+
+A normal child process cannot permanently change the parent shell directory.
+For requests such as:
+
+```bash
+cairos go into directory TU-Graz using the find command
+```
+
+CAIROS prints matching paths and explains the limitation instead of pretending
+that a `cd` command can affect your shell after CAIROS exits.
+
+Use a shell wrapper when you want durable directory changes.
+
+Bash/zsh:
+
+```bash
+ccd() {
+  local p
+  p="$(cairos find-dir "$1")" || return
+  cd "$p"
+}
+```
+
+PowerShell:
+
+```powershell
+function ccd($name) {
+  $p = cairos find-dir $name
+  if ($LASTEXITCODE -eq 0 -and $p) { Set-Location $p }
+}
+```
+
+cmd.exe:
+
+```cmd
+for /f "delims=" %i in ('cairos find-dir TU-Graz') do cd /d "%i"
+```

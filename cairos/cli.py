@@ -27,7 +27,9 @@ from .config import (
     configure_ollama,
     configure_openai,
     disable_ai,
+    env_var_hint,
     set_config_value,
+    shell_guess,
     state_dir,
 )
 from .context import context_json, context_summary
@@ -56,6 +58,7 @@ Usage:
   cairos explain <shell command>
   cairos check <shell command | natural language task>
   cairos context [--json]
+  cairos find-dir <name>
   cairos config show
   cairos config path
   cairos config ai status
@@ -230,6 +233,72 @@ def _handle_context(args: list[str]) -> int:
     return 0
 
 
+def _iter_find_dir_roots() -> list[Path]:
+    home = Path.home()
+    roots = [Path.cwd(), home, home / "projects", home / "Desktop", home / "Documents", home / "Downloads"]
+    seen: set[str] = set()
+    unique: list[Path] = []
+    for root in roots:
+        try:
+            key = str(root.resolve())
+        except OSError:
+            key = str(root)
+        if key not in seen:
+            seen.add(key)
+            unique.append(root)
+    return unique
+
+
+def _find_dir(name: str, max_depth: int = 3, max_dirs_scanned: int = 300) -> Path | None:
+    target = name.lower()
+    scanned = 0
+    ignored = {"appdata", ".git", ".venv", "venv", "env", "node_modules", ".local", "library", "onedrive"}
+
+    def walk(root: Path, depth: int) -> Path | None:
+        nonlocal scanned
+        if scanned >= max_dirs_scanned or depth > max_depth:
+            return None
+        try:
+            entries = sorted(root.iterdir(), key=lambda p: p.name.lower())
+        except (PermissionError, OSError):
+            return None
+        scanned += 1
+        for entry in entries:
+            try:
+                if not entry.is_dir() or entry.is_symlink() or entry.name.lower() in ignored:
+                    continue
+                if entry.name.lower() == target:
+                    return entry
+                found = walk(entry, depth + 1)
+                if found:
+                    return found
+            except (PermissionError, OSError):
+                continue
+        return None
+
+    for root in _iter_find_dir_roots():
+        if not root.exists() or not root.is_dir():
+            continue
+        if root.name.lower() == target:
+            return root
+        found = walk(root, 0)
+        if found:
+            return found
+    return None
+
+
+def _handle_find_dir(args: list[str]) -> int:
+    if not args:
+        print("Missing directory name.", file=sys.stderr)
+        return 1
+    found = _find_dir(_join(args))
+    if not found:
+        print("Directory not found within bounded search locations.", file=sys.stderr)
+        return 1
+    print(found)
+    return 0
+
+
 def _handle_config_ai(args: list[str]) -> int:
     """Handle ``cairos config ai ...`` commands."""
     if not args or args[0] == "status":
@@ -262,7 +331,9 @@ def _handle_config_ai(args: list[str]) -> int:
         path = configure_openai(model=model, api_key_env=api_key_env, endpoint=endpoint)
         print(f"Configured OpenAI-compatible AI in {path}")
         print(f"provider=openai model={model} endpoint={endpoint} api_key_env={api_key_env}")
-        print(f"Next: export {api_key_env}=<your-api-key>")
+        print("Next:")
+        for line in env_var_hint(api_key_env):
+            print(f"  {line}")
         return 0
 
     if args[0] in {"use-gemini", "gemini"}:
@@ -272,7 +343,9 @@ def _handle_config_ai(args: list[str]) -> int:
         path = configure_gemini(model=model, api_key_env=api_key_env)
         print(f"Configured Gemini AI in {path}")
         print(f"provider=gemini model={model} api_key_env={api_key_env}")
-        print(f"Next: export {api_key_env}=<your-api-key>")
+        print("Next:")
+        for line in env_var_hint(api_key_env):
+            print(f"  {line}")
         return 0
 
     if args[0] == "set-gemini-key-env" and len(args) >= 2:
@@ -419,11 +492,7 @@ def _install_mode() -> str:
 
 def _shell_guess() -> str:
     """Return a friendly guess for the user's shell."""
-    if platform.system() == "Windows":
-        parent = os.environ.get("PSModulePath")
-        return "powershell" if parent else "cmd/powershell"
-    shell = Path(os.environ.get("SHELL", "")).name
-    return shell or "unknown"
+    return shell_guess()
 
 
 def _running_from_source() -> bool:
@@ -535,7 +604,6 @@ def _handle_setup() -> int:
 
 
 def _handle_quicksetup() -> int:
-    is_windows = platform.system() == "Windows"
     print("CAIROS Quicksetup")
     print("")
     print("1. Install status")
@@ -558,11 +626,8 @@ def _handle_quicksetup() -> int:
     print("   no AI:")
     print("     cairos config ai disable")
     print("   Gemini:")
-    if is_windows:
-        print('     setx GEMINI_API_KEY "your-key"')
-        print('     $env:GEMINI_API_KEY="your-key"')
-    else:
-        print('     export GEMINI_API_KEY="your-key"')
+    for line in env_var_hint("GEMINI_API_KEY"):
+        print(f"     {line}")
     print("     cairos config ai use-gemini gemini-2.5-flash")
     print("   Ollama:")
     print("     ollama pull llama3.1")
@@ -589,7 +654,7 @@ def _handle_quicksetup() -> int:
 COMPLETION_COMMANDS = [
     "plan", "run", "expand", "preview", "diff", "explain", "check", "context",
     "config", "rules", "doctor", "install-info", "quicksetup", "setup",
-    "templates", "history", "shell", "completion", "init",
+    "templates", "history", "shell", "completion", "find-dir", "init",
 ]
 
 
@@ -823,6 +888,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_explain(rest)
     if command == "context":
         return _handle_context(rest)
+    if command == "find-dir":
+        return _handle_find_dir(rest)
     if command == "config":
         return _handle_config(rest)
     if command == "rules":
