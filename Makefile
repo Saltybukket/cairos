@@ -1,12 +1,10 @@
-.PHONY: test report clean install editable
+.PHONY: test compile clean
 
-PYTHON ?= python3
+test: compile
+	python3 scripts/run_tests.py --cases tests/cases/testcases.json --html reports/testreport.html --json reports/results.json
 
-install editable:
-	$(PYTHON) -m pip install -e .
-
-test report:
-	$(PYTHON) scripts/run_tests.py --cases tests/cases/testcases.json --html reports/testreport.html --json reports/results.json
+compile:
+	python3 -m compileall -q cairos scripts
 
 clean:
-	rm -rf reports/*.html reports/*.json .pytest_cache __pycache__ cairos/__pycache__ scripts/__pycache__ *.egg-info build dist
+	rm -rf reports .pytest_cache **/__pycache__ cairos.egg-info build dist

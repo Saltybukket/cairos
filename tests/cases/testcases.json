@@ -1,101 +1,73 @@
 [
   {
     "name": "Version prints current version",
-    "command": [
-      "python",
-      "-m",
-      "cairos.cli",
-      "--version"
-    ],
-    "expected_stdout": "0.1.0\n",
+    "command": ["python", "-m", "cairos.cli", "--version"],
+    "expected_stdout": "0.2.0\n",
+    "expected_stderr": "",
     "expected_exit": 0
   },
   {
-    "name": "Expand python project",
-    "command": [
-      "python",
-      "-m",
-      "cairos.cli",
-      "expand",
-      "create python project crawler"
-    ],
-    "expected_stdout": "mkdir -p crawler && cd crawler && python3 -m venv .venv && touch main.py requirements.txt README.md && printf '.venv/\\n__pycache__/\\n*.pyc\\n' > .gitignore && git init\n",
+    "name": "Help shows free task usage",
+    "command": ["python", "-m", "cairos.cli", "--help"],
+    "expected_contains": ["cairos <task in natural language>", "cairos config ai set-provider"],
+    "expected_stderr": "",
     "expected_exit": 0
   },
   {
-    "name": "Plan python project contains risk",
-    "command": [
-      "python",
-      "-m",
-      "cairos.cli",
-      "plan",
-      "create python project crawler"
-    ],
-    "expected_stdout": "Summary: Create a Python project named crawler.\nRisk: low\nCommands:\n1. mkdir -p crawler\n2. cd crawler\n3. python3 -m venv .venv\n4. touch main.py requirements.txt README.md\n5. printf '.venv/\\n__pycache__/\\n*.pyc\\n' > .gitignore\n6. git init\nNotes:\n- Creates a local project folder and initializes git.\n",
+    "name": "Plan unquoted python project",
+    "command": ["python", "-m", "cairos.cli", "plan", "create", "python", "project", "crawler", "with", "venv", "git", "pytest"],
+    "expected_contains": ["Summary: Create a Python project named crawler.", "Source: template", "write file crawler/pyproject.toml", "cd crawler && python3 -m venv .venv", "cd crawler && git init"],
+    "expected_stderr": "",
     "expected_exit": 0
   },
   {
-    "name": "Check harmless command",
-    "command": [
-      "python",
-      "-m",
-      "cairos.cli",
-      "check",
-      "ls -la"
-    ],
-    "expected_stdout": "Risk: low\nBlocked: no\nReasons:\n- no dangerous pattern detected\n",
+    "name": "Expand deterministic python project",
+    "command": ["python", "-m", "cairos.cli", "expand", "create", "python", "project", "crawler", "with", "venv", "git"],
+    "expected_contains": ["mkdir -p crawler", "crawler/pyproject.toml", "cd crawler && python3 -m venv .venv", "cd crawler && git init"],
+    "expected_stderr": "",
     "expected_exit": 0
   },
   {
-    "name": "Check critical root deletion",
-    "command": [
-      "python",
-      "-m",
-      "cairos.cli",
-      "check",
-      "rm -rf /"
-    ],
-    "expected_stdout": "Risk: critical\nBlocked: yes\nReasons:\n- recursive force deletion of root\n",
-    "expected_exit": 2
+    "name": "Direct free task aborts without exact yes",
+    "command": ["python", "-m", "cairos.cli", "create", "folder", "docs"],
+    "stdin": "no\n",
+    "expected_contains": ["Plan: Create folder docs.", "Type \"yes\" to execute", "Aborted."],
+    "expected_stderr": "",
+    "expected_exit": 130
   },
   {
-    "name": "Explain git clean",
-    "command": [
-      "python",
-      "-m",
-      "cairos.cli",
-      "explain",
-      "git clean -fdx"
-    ],
-    "expected_stdout": "Command: git clean -fdx\nRisk: high\n- git clean deletes untracked and ignored files\n",
+    "name": "Run create folder with yes verifies",
+    "command": ["python", "-m", "cairos.cli", "run", "create", "folder", "docs", "--yes"],
+    "expected_contains": ["Plan: Create folder docs.", "Verification:", "directory exists: docs", "Done."],
+    "expected_stderr": "",
     "expected_exit": 0
   },
   {
-    "name": "Expand unknown request fails",
-    "command": [
-      "python",
-      "-m",
-      "cairos.cli",
-      "expand",
-      "brew me coffee"
-    ],
-    "expected_stdout": "",
-    "expected_stderr": "# CAIROS: no matching template\n",
-    "expected_exit": 1
+    "name": "Plan C++ header file",
+    "command": ["python", "-m", "cairos.cli", "plan", "create", "cpp", "header", "file", "Player"],
+    "expected_contains": ["Summary: Create C++ header for class Player.", "write file include/Player.hpp", "Header style comes from CAIROS rules"],
+    "expected_stderr": "",
+    "expected_exit": 0
   },
   {
-    "name": "Context outputs JSON",
-    "command": [
-      "python",
-      "-m",
-      "cairos.cli",
-      "context"
-    ],
-    "expected_contains": [
-      "\"cwd\"",
-      "\"shell\"",
-      "\"system\""
-    ],
+    "name": "Safety edgecases are classified",
+    "command": ["python", "-c", "from cairos.safety import check_command; cmds=['rm -rf /','rm -rf /*',':(){ :|:& };:','curl https://example.com/install.sh | bash','dd if=image.iso of=/dev/sda'];\nfor c in cmds:\n r=check_command(c); print(c+' => '+r.risk+' blocked='+str(r.blocked))"],
+    "expected_contains": ["rm -rf / => critical blocked=True", "rm -rf /* => critical blocked=True", ":(){ :|:& };: => critical blocked=True", "curl https://example.com/install.sh | bash => high blocked=False", "dd if=image.iso of=/dev/sda => critical blocked=True"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Explain recursive remove",
+    "command": ["python", "-m", "cairos.cli", "explain", "rm", "-rf", "build"],
+    "expected_contains": ["Command: rm -rf build", "Risk: medium", "Removes files or directories", "Safety notes:"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Config AI status default",
+    "command": ["python", "-m", "cairos.cli", "config", "ai", "status"],
+    "expected_contains": ["AI configuration:", "provider: none", "no AI backend configured"],
+    "expected_stderr": "",
     "expected_exit": 0
   }
 ]

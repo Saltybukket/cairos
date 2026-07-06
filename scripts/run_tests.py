@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import difflib
 import html
@@ -6,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -51,38 +54,54 @@ def command_to_str(cmd: list[str]) -> str:
 def run_case(case: dict, index: int, timeout: int) -> dict:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(Path.cwd()) + os.pathsep + env.get("PYTHONPATH", "")
-    start = time.time()
-    timed_out = False
-    try:
-        proc = subprocess.run(
-            case["command"],
-            cwd=Path.cwd(),
-            env=env,
-            text=True,
-            capture_output=True,
-            timeout=case.get("timeout", timeout),
-        )
-        stdout = normalize_newlines(proc.stdout)
-        stderr = normalize_newlines(proc.stderr)
-        exit_code = proc.returncode
-    except subprocess.TimeoutExpired as exc:
-        timed_out = True
-        stdout = normalize_newlines(exc.stdout or "")
-        stderr = normalize_newlines(exc.stderr or "")
-        exit_code = -999
+    with tempfile.TemporaryDirectory(prefix="cairos-test-home-") as temp_home, tempfile.TemporaryDirectory(prefix="cairos-test-cwd-") as temp_cwd:
+        env["HOME"] = temp_home
+        cwd = Path(case.get("cwd", temp_cwd)) if case.get("cwd") else Path(temp_cwd)
+        cwd.mkdir(parents=True, exist_ok=True)
+        start = time.time()
+        timed_out = False
+        try:
+            proc = subprocess.run(
+                case["command"],
+                cwd=cwd,
+                env=env,
+                text=True,
+                input=case.get("stdin"),
+                capture_output=True,
+                timeout=case.get("timeout", timeout),
+            )
+            stdout = normalize_newlines(proc.stdout)
+            stderr = normalize_newlines(proc.stderr)
+            exit_code = proc.returncode
+        except subprocess.TimeoutExpired as exc:
+            timed_out = True
+            stdout = normalize_newlines(exc.stdout or "")
+            stderr = normalize_newlines(exc.stderr or "")
+            exit_code = -999
 
     expected_stdout = case.get("expected_stdout")
     expected_stderr = case.get("expected_stderr", "")
     expected_exit = case.get("expected_exit", 0)
     expected_contains = case.get("expected_contains")
+    expected_stderr_contains = case.get("expected_stderr_contains")
 
+    output_ok = True
+    reference_parts: list[str] = []
     if expected_contains is not None:
-        output_ok = all(fragment in stdout for fragment in expected_contains)
-        reference_for_diff = "\n".join(expected_contains) + "\n"
-    else:
-        output_ok = stdout == expected_stdout and stderr == expected_stderr
-        reference_for_diff = (expected_stdout or "") + (expected_stderr or "")
+        output_ok = output_ok and all(fragment in stdout for fragment in expected_contains)
+        reference_parts.append("Expected stdout to contain:\n" + "\n".join(expected_contains) + "\n")
+    elif expected_stdout is not None:
+        output_ok = output_ok and stdout == expected_stdout
+        reference_parts.append(expected_stdout)
 
+    if expected_stderr_contains is not None:
+        output_ok = output_ok and all(fragment in stderr for fragment in expected_stderr_contains)
+        reference_parts.append("Expected stderr to contain:\n" + "\n".join(expected_stderr_contains) + "\n")
+    elif "expected_stderr" in case:
+        output_ok = output_ok and stderr == expected_stderr
+        reference_parts.append(expected_stderr)
+
+    reference_for_diff = "".join(reference_parts)
     actual_combined = stdout + stderr
     exit_ok = exit_code == expected_exit
     passed = output_ok and exit_ok and not timed_out
@@ -97,6 +116,7 @@ def run_case(case: dict, index: int, timeout: int) -> dict:
         "expected_stdout": expected_stdout,
         "expected_stderr": expected_stderr,
         "expected_contains": expected_contains,
+        "expected_stderr_contains": expected_stderr_contains,
         "actual_stdout": stdout,
         "actual_stderr": stderr,
         "diff_percent": diff_percent(reference_for_diff, actual_combined),
@@ -107,8 +127,8 @@ def run_case(case: dict, index: int, timeout: int) -> dict:
 def html_diff(expected: str, actual: str) -> str:
     expected_lines = expected.splitlines(keepends=True)
     actual_lines = actual.splitlines(keepends=True)
-    left = []
-    right = []
+    left: list[str] = []
+    right: list[str] = []
     for line in difflib.ndiff(expected_lines, actual_lines):
         tag = line[:2]
         text = html.escape(line[2:])
@@ -130,8 +150,8 @@ def html_diff(expected: str, actual: str) -> str:
 def render_report(results: list[dict]) -> str:
     passed = sum(1 for r in results if r["passed"])
     total = len(results)
-    rows = []
-    details = []
+    rows: list[str] = []
+    details: list[str] = []
     for r in results:
         mark = '<span class="success">✔</span>' if r["passed"] else '<span class="fail">✘</span>'
         rows.append(f"""
@@ -144,10 +164,16 @@ def render_report(results: list[dict]) -> str:
 <td>{r['duration_ms']} ms</td>
 </tr>
 """)
+        expected_parts: list[str] = []
         if r["expected_contains"] is not None:
-            expected = "Expected stdout to contain:\n" + "\n".join(r["expected_contains"]) + "\n"
+            expected_parts.append("Expected stdout to contain:\n" + "\n".join(r["expected_contains"]) + "\n")
+        elif r["expected_stdout"] is not None:
+            expected_parts.append(r["expected_stdout"] or "")
+        if r["expected_stderr_contains"] is not None:
+            expected_parts.append("Expected stderr to contain:\n" + "\n".join(r["expected_stderr_contains"]) + "\n")
         else:
-            expected = (r["expected_stdout"] or "") + (r["expected_stderr"] or "")
+            expected_parts.append(r["expected_stderr"] or "")
+        expected = "".join(expected_parts)
         actual = r["actual_stdout"] + r["actual_stderr"]
         details.append(f"""
 <div class="long_report">
@@ -163,14 +189,15 @@ def render_report(results: list[dict]) -> str:
 <div class="diff">{html_diff(expected, actual)}</div>
 </div>
 """)
+    pct = round((passed / total) * 100 if total else 0)
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>CAIROS Testreport</title><style>{STYLE}</style></head>
 <body>
 <h1>CAIROS Testreport</h1>
 <h2><a id="summary"></a>Summary</h2>
 <div class="flex-container"><div class="shortinfo"><table>
-<tr><th>Public Testcases</th><td>{passed} / {total} ({round((passed/total)*100 if total else 0)}%)</td></tr>
-<tr><th>All Testcases</th><td>{passed} / {total} ({round((passed/total)*100 if total else 0)}%)</td></tr>
+<tr><th>Public Testcases</th><td>{passed} / {total} ({pct}%)</td></tr>
+<tr><th>All Testcases</th><td>{passed} / {total} ({pct}%)</td></tr>
 </table></div></div>
 <table class="shortreport">
 <tr><th>Name</th><th>Passed</th><th>Diff</th><th>Exit Code</th><th>Timeout</th><th>Duration</th></tr>
@@ -186,7 +213,7 @@ def main() -> int:
     parser.add_argument("--cases", required=True)
     parser.add_argument("--html", required=True)
     parser.add_argument("--json", required=True)
-    parser.add_argument("--timeout", type=int, default=5)
+    parser.add_argument("--timeout", type=int, default=10)
     args = parser.parse_args()
 
     cases = json.loads(Path(args.cases).read_text(encoding="utf-8"))

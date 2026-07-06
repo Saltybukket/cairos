@@ -1,10 +1,11 @@
 # CAIROS Demo
 
 ```bash
-cairos plan "create python project crawler"
-cairos expand "create python project crawler"
-cairos check "rm -rf /"
-cairos explain "git clean -fdx"
+cairos plan create python project crawler with venv git pytest
+cairos create folder docs
+cairos run create cpp header file Player --yes
+cairos explain rm -rf build
+cairos check rm -rf /
+cairos config ai status
+cairos rules init
 ```
-
-Expected idea: CAIROS should help you inspect and expand commands, not blindly execute AI output.

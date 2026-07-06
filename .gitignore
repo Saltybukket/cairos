@@ -9,19 +9,22 @@ __pycache__/
 venv/
 env/
 
-# Build / packaging
+# Packaging
 build/
 dist/
 *.egg-info/
 .eggs/
 
-# Test / reports
+# Test output
 .pytest_cache/
 .coverage
 htmlcov/
 reports/
 
-# OS / editor
-.DS_Store
+# Editor / OS
 .vscode/
 .idea/
+.DS_Store
+
+# CAIROS local project config may be personal
+.cairos/local.json

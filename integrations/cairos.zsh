@@ -1,16 +1,16 @@
 # CAIROS zsh integration
-# Usage: source integrations/cairos.zsh
-# Type natural language, press Ctrl+G, inspect expansion, press Enter.
+# Source this file in ~/.zshrc:
+#   source /path/to/cairos/integrations/cairos.zsh
 
 cairos-expand-command() {
-    local expanded
-    expanded=$(cairos expand "$BUFFER" 2>/tmp/cairos-expand-error)
-    if [[ $? -eq 0 ]]; then
-        BUFFER="$expanded"
-        CURSOR=${#BUFFER}
-    else
-        zle -M "CAIROS could not expand this input"
-    fi
+  local expanded
+  expanded=$(cairos expand ${(z)BUFFER} 2>/dev/null)
+  if [[ -n "$expanded" ]]; then
+    BUFFER="$expanded"
+    CURSOR=${#BUFFER}
+  else
+    zle -M "CAIROS: no deterministic expansion matched"
+  fi
 }
 
 zle -N cairos-expand-command

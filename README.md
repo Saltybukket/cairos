@@ -1,9 +1,29 @@
-# What is cairos?
+# CAIROS
 
-**CAIROS** stands for **Context Aware Intelligent Runtime Operating Shell**.
+**CAIROS — Context-Aware Intelligent Runtime Operating Shell**
 
-CAIROS is an AI-assisted shell wrapper that makes the command line more accessible, intuitive, and context-aware. Instead of replacing your existing shell, CAIROS adds an intelligent layer between you and the terminal. This layer can interpret natural language input, understand the current context, and translate your intent into the appropriate command-line actions.
+CAIROS is a context-aware AI-assisted command layer for your terminal. It first tries fast deterministic templates and only falls back to an optional AI backend when it cannot solve a task locally.
 
-Normal shell commands continue to work exactly as expected. You can still use your preferred shell, aliases, autocomplete, scripts, and workflows without changing how your system behaves. CAIROS simply enhances the experience by helping with tasks such as creating projects, navigating files, explaining commands, and executing common workflows through text-based AI assistance.
+```bash
+cairos create python project demo with venv git pytest
+cairos create cpp header file Player
+cairos explain git reset --soft HEAD~1
+cairos check rm -rf /
+cairos config ai status
+```
 
-CAIROS is designed to be compatible with different shells, including `zsh`, `bash`, and other Unix-like command-line environments. It is not an AI operating system and does not autonomously control your machine. Instead, it works through a defined set of functions and commands, acting as a smart interface between the user and the shell.
+See [`DOCUMENTATION.md`](DOCUMENTATION.md) for full usage, commands, settings and behavior.
+
+## Quick start
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+cairos --version
+make test
+```
+
+## Current status
+
+This is an early development version. It already includes deterministic planners, safety checks, rules/config files, AI backend configuration stubs, structured execution with confirmation, and a HTML test report generator.
