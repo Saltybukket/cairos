@@ -36,9 +36,11 @@ def make_plan(request: str, allow_ai: bool = True) -> Plan:
                 steps=[],
                 risk="medium",
                 notes=[
+                    "CAIROS could not solve this with local templates.",
                     "No AI backend is configured.",
-                    "Local AI: cairos config ai use-ollama llama3.1",
-                    "API AI: export OPENAI_API_KEY=... && cairos config ai use-openai gpt-4.1-mini",
+                    "Try: cairos config ai use-ollama llama3.1",
+                    "Try: cairos config ai use-gemini gemini-2.5-flash",
+                    "Try: cairos config ai use-openai gpt-4.1-mini",
                     "Or add a deterministic template in cairos/templates.py.",
                 ],
                 source="none",

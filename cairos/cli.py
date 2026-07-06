@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 from . import __version__
+from .ai import ai_self_test, list_models
 from .config import (
     ai_status,
     config_json,
@@ -32,6 +33,7 @@ from .planner import make_plan
 from .preview import diff_plan, preview_plan
 from .rules import init_global_rules, init_local_rules, rules_json, set_rule
 from .safety import check_command
+from .text import looks_like_shell_command
 
 RESERVED = {"plan", "expand", "run", "check", "explain", "context", "config", "rules", "doctor", "history", "preview", "diff", "help"}
 
@@ -46,11 +48,13 @@ Usage:
   cairos preview <task>
   cairos diff <task>
   cairos explain <shell command>
-  cairos check <shell command>
+  cairos check <shell command | natural language task>
   cairos context [--json]
   cairos config show
   cairos config path
   cairos config ai status
+  cairos config ai test
+  cairos config ai list-models
   cairos config ai use-ollama [model] [--endpoint URL]
   cairos config ai use-openai [model] [--api-key-env ENV] [--endpoint URL]
   cairos config ai use-gemini [model] [--api-key-env ENV]
@@ -61,6 +65,8 @@ Usage:
   cairos rules show
   cairos rules set <key.path> <value> [--global]
   cairos doctor
+  cairos init [--global]
+  cairos setup
   cairos history [last|clear]
 
 Examples:
@@ -110,6 +116,10 @@ def _handle_plan(args: list[str]) -> int:
     if not args:
         print("Missing task.", file=sys.stderr)
         return 1
+    if args[0] == "--debug-match":
+        from .templates import debug_match_report
+        print(debug_match_report(_join(args[1:])))
+        return 0
     print(format_plan(make_plan(_join(args))))
     return 0
 
@@ -169,6 +179,9 @@ def _handle_check(args: list[str]) -> int:
         print("Missing shell command.", file=sys.stderr)
         return 1
     command = _join(args)
+    if not looks_like_shell_command(command):
+        print(format_plan(make_plan(f"check {command}")))
+        return 0
     result = check_command(command)
     print(f"Risk: {result.risk}")
     print(f"Blocked: {'yes' if result.blocked else 'no'}")
@@ -197,6 +210,14 @@ def _handle_config_ai(args: list[str]) -> int:
         print(ai_status())
         return 0
 
+    if args[0] == "test":
+        print(ai_self_test())
+        return 0
+
+    if args[0] == "list-models":
+        print(list_models())
+        return 0
+
     if args[0] in {"use-ollama", "set-local", "local", "ollama"}:
         model_args = _without_flags(args[1:], {"--endpoint"})
         model = model_args[0] if model_args else "llama3.1"
@@ -220,7 +241,7 @@ def _handle_config_ai(args: list[str]) -> int:
 
     if args[0] in {"use-gemini", "gemini"}:
         model_args = _without_flags(args[1:], {"--api-key-env"})
-        model = model_args[0] if model_args else "gemini-1.5-flash"
+        model = model_args[0] if model_args else "gemini-2.5-flash"
         api_key_env = _extract_flag_value(args, "--api-key-env", "GEMINI_API_KEY")
         path = configure_gemini(model=model, api_key_env=api_key_env)
         print(f"Configured Gemini AI in {path}")
@@ -328,10 +349,39 @@ def _handle_doctor() -> int:
     print(f"executable: {sys.executable}")
     print(f"config path: {config_path()}")
     print(ai_status())
+    print("AI hints:")
+    print("- Run `cairos config ai test` to verify the configured backend.")
+    print("- Run `cairos config ai list-models` to inspect Gemini model availability.")
     print("Context:")
     print(context_summary())
     git = check_command("git --version")
     print(f"git safety check: {git.risk}")
+    return 0
+
+
+def _handle_init(args: list[str]) -> int:
+    if "--global" in args:
+        from .config import save_config, load_config
+        cfg_path = save_config(load_config())
+        rules_path = init_global_rules()
+        print(f"Global CAIROS config ready: {cfg_path}")
+        print(f"Global CAIROS rules ready: {rules_path}")
+        return 0
+    path = init_local_rules()
+    print(f"Project CAIROS rules ready: {path}")
+    print("Use `cairos rules set <key.path> <value>` to customize templates.")
+    return 0
+
+
+def _handle_setup() -> int:
+    print("CAIROS setup")
+    print(f"Config path: {config_path()}")
+    print("Useful next commands:")
+    print("- cairos init")
+    print("- cairos config ai use-ollama llama3.1")
+    print("- cairos config ai use-gemini gemini-2.5-flash")
+    print("- cairos config ai status")
+    print("- cairos doctor")
     return 0
 
 
@@ -343,7 +393,14 @@ def _handle_history(args: list[str]) -> int:
     if args and args[0] == "last":
         print(format_history(limit=1))
         return 0
-    print(format_history(limit=25))
+    limit = 25
+    if "--limit" in args:
+        try:
+            limit = int(args[args.index("--limit") + 1])
+        except (IndexError, ValueError):
+            print("Invalid --limit value.", file=sys.stderr)
+            return 1
+    print(format_history(limit=limit))
     return 0
 
 
@@ -372,11 +429,16 @@ def main(argv: list[str] | None = None) -> int:
     if args[0] == "--dry-run":
         return _handle_dry_run(args[1:])
 
+    if args[0] == "--":
+        return _handle_free_task(args[1:])
+
     command = args[0]
     rest = args[1:]
 
     if command == "plan":
         return _handle_plan(rest)
+    if command in {"ask", "do"}:
+        return _handle_free_task(rest)
     if command == "expand":
         return _handle_expand(rest)
     if command == "run":
@@ -397,6 +459,10 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_rules(rest)
     if command == "doctor":
         return _handle_doctor()
+    if command == "init":
+        return _handle_init(rest)
+    if command == "setup":
+        return _handle_setup()
     if command == "history":
         return _handle_history(rest)
 

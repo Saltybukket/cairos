@@ -108,3 +108,25 @@ def candidate_words(text: str) -> list[str]:
         if norm not in {normalize_word(w) for w in IGNORED_NAME_WORDS}:
             candidates.append(word)
     return candidates
+
+
+SHELL_COMMAND_STARTS = {
+    "git", "rm", "find", "chmod", "chown", "curl", "wget", "python", "python3",
+    "pip", "npm", "cargo", "make", "cmake", "mkdir", "touch", "cp", "mv",
+    "grep", "sed", "awk", "cat", "echo", "ls", "dd", "mkfs", "sudo",
+}
+
+
+def looks_like_shell_command(text: str) -> bool:
+    """Heuristically decide whether text is a shell command, not a task."""
+    stripped = text.strip()
+    tokens = tokenize(stripped)
+    if not tokens:
+        return False
+    if tokens[0] in SHELL_COMMAND_STARTS:
+        return True
+    if any(marker in stripped for marker in ["|", "&&", ";", ">", "<", "$(", "`"]):
+        return True
+    if any(token in {"-rf", "--force", "--hard", "-r"} for token in tokens):
+        return True
+    return False

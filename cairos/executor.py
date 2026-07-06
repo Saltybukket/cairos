@@ -51,6 +51,10 @@ def _verify(item: VerificationStep) -> tuple[bool, str]:
     if item.kind == "command_succeeds":
         proc = subprocess.run(item.target, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return proc.returncode == 0, f"command succeeds: {item.target}"
+    if item.kind == "command_output_equals":
+        proc = subprocess.run(item.target, shell=True, text=True, capture_output=True)
+        actual = proc.stdout.strip()
+        return proc.returncode == 0 and actual == item.expected, f"command output equals {item.expected!r}: {item.target}"
     return False, f"unknown verification: {item.kind} {item.target}"
 
 

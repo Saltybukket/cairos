@@ -1,0 +1,32 @@
+{
+  "ai": {
+    "allow_file_content_context": false
+  },
+  "cpp": {
+    "class_constructors": true,
+    "header_extension": ".hpp",
+    "header_style": "ifndef",
+    "include_dir": "include",
+    "namespace": "",
+    "source_dir": "src",
+    "source_extension": ".cpp",
+    "standard": "17",
+    "test_dir": "tests"
+  },
+  "git": {
+    "force_push_allowed": false,
+    "main_branch": "main",
+    "prefer_rebase": false,
+    "remote": "origin"
+  },
+  "project": {
+    "name": "",
+    "type": "auto"
+  },
+  "python": {
+    "default_dependencies": [],
+    "layout": "package",
+    "test_dir": "tests",
+    "use_pyproject": true
+  }
+}

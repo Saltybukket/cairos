@@ -13,13 +13,18 @@
 - Context collector for project/git/shell state
 - AI backend interface for Ollama, OpenAI-compatible APIs and custom commands
 - HTML testcase report generator
+- Deterministic Bash script generation
+- Gemini model listing and `config ai test`
+- Natural-language `check ...` routing for Git inspection
+- Git add/commit/push safety upgrades
+- Preview, diff and safe history
 
 ## Next milestones
 
 1. Interactive multi-stage Git workflow with merge/rebase/push confirmation.
-2. Diff preview before modifying existing files.
+2. Richer diff preview before modifying existing files.
 3. Better shell quoting and command AST representation.
-4. Persistent history log in `~/.local/state/cairos/history.jsonl`.
+4. More history filters and search.
 5. `cairos undo last` for CAIROS-created files.
 6. Rich terminal output with colors and panels.
 7. More deterministic templates for Node, Rust, CMake libraries and Makefiles.

@@ -19,6 +19,13 @@ def format_plan(plan: Plan, verbose: bool = True) -> str:
             if verbose:
                 lines.append(f"   - {step.description}")
                 lines.append(f"   - kind={step.kind}, changes_files={'yes' if step.changes_files else 'no'}, risk={step.risk}")
+                if step.kind in {"write_file", "append_file"} and step.content:
+                    preview = step.content
+                    if len(preview) > 2000:
+                        preview = preview[:2000] + "\n...<truncated>"
+                    lines.append("   - content preview:")
+                    for content_line in preview.splitlines()[:40]:
+                        lines.append(f"     {content_line}")
     else:
         lines.append("<none>")
     if plan.verification:

@@ -27,8 +27,9 @@ HIGH_PATTERNS: list[tuple[str, str]] = [
     (r"\bcurl\s+.*\|\s*(bash|sh)\b", "downloaded script piped into shell"),
     (r"\bwget\s+.*\|\s*(bash|sh)\b", "downloaded script piped into shell"),
     (r"\bgit\s+clean\s+.*-[a-z]*f[a-z]*d[a-z]*x", "git clean deletes untracked and ignored files"),
-    (r"\bgit\s+push\s+.*--force", "force push rewrites remote history"),
+    (r"\bgit\s+push\b[^\n]*(--force|(^|\s)-f(\s|$))", "force push rewrites remote history"),
     (r"\bgit\s+reset\s+--hard", "hard reset discards local changes"),
+    (r"\bfind\s+\.\s+.*-exec\s+rm\s+-[^\n]*r[^\n]*f", "find exec recursive force deletion"),
 ]
 
 MEDIUM_PATTERNS: list[tuple[str, str]] = [
@@ -36,12 +37,18 @@ MEDIUM_PATTERNS: list[tuple[str, str]] = [
     (r"\brm\s+-[^\n]*r", "recursive deletion"),
     (r"\brm\s+[^\n]*\*", "rm with glob can delete multiple files"),
     (r"\bmv\s+[^\n]+\s+(/|~)", "move operation targets a broad path"),
+    (r"\bgit\s+add(\s|$)", "git add changes the repository index"),
+    (r"\bgit\s+commit(\s|$)", "git commit changes repository history"),
+    (r"\bgit\s+tag(\s|$)", "git tag changes repository refs"),
+    (r"\bgit\s+push(\s|$)", "git push updates a remote repository"),
 ]
 
 
 def check_command(command: str) -> SafetyResult:
     cmd = command.strip()
     lowered = cmd.lower()
+    if lowered.startswith("echo ") or lowered.startswith("printf "):
+        return SafetyResult(risk="low", reasons=["printing text only"], blocked=False)
     risk = "low"
     reasons: list[str] = []
 

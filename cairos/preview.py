@@ -10,7 +10,12 @@ from .models import Plan
 
 def preview_plan(plan: Plan) -> str:
     """Describe files and commands a plan would affect without executing it."""
-    lines = [f"Preview: {plan.summary}", f"Source: {plan.source}", f"Risk: {plan.risk}"]
+    lines = [
+        f"Preview: {plan.summary}",
+        f"Source: {plan.source}",
+        f"Risk: {plan.risk}",
+        f"Requires confirmation: {'yes' if plan.requires_confirmation else 'no'}",
+    ]
     if not plan.steps:
         lines.append("<no steps>")
         return "\n".join(lines)

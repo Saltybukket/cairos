@@ -291,8 +291,8 @@
     ],
     "expected_contains": [
       "No deterministic template matched this request",
-      "Local AI: cairos config ai use-ollama",
-      "API AI: export OPENAI_API_KEY"
+      "cairos config ai use-ollama",
+      "cairos config ai use-gemini gemini-2.5-flash"
     ],
     "expected_stderr": "",
     "expected_exit": 0
@@ -450,6 +450,460 @@
     ],
     "expected_contains": [
       "history"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Bash script request does not become folder creation",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "create",
+      "a",
+      "small",
+      "bash",
+      "script",
+      "that",
+      "prints",
+      "the",
+      "current",
+      "git",
+      "branch",
+      "and",
+      "current",
+      "folder"
+    ],
+    "expected_contains": [
+      "Source: template:bash_script",
+      "branch_info.sh",
+      "chmod +x branch_info.sh"
+    ],
+    "expected_not_contains": [
+      "Create folder prints",
+      "mkdir -p prints"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Preview bash script shows target",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "preview",
+      "create",
+      "bash",
+      "script",
+      "branch_info",
+      "that",
+      "prints",
+      "current",
+      "git",
+      "branch",
+      "and",
+      "folder"
+    ],
+    "expected_contains": [
+      "Preview: Create a Bash script",
+      "branch_info.sh",
+      "Risk: medium"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Diff bash script shows content",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "diff",
+      "create",
+      "bash",
+      "script",
+      "branch_info",
+      "that",
+      "prints",
+      "current",
+      "git",
+      "branch",
+      "and",
+      "folder"
+    ],
+    "expected_contains": [
+      "+++ b/branch_info.sh",
+      "#!/usr/bin/env bash",
+      "git branch --show-current"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Natural language check routes to planner",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "check",
+      "the",
+      "commit",
+      "log",
+      "and",
+      "give",
+      "me",
+      "a",
+      "summary",
+      "if",
+      "everything",
+      "looks",
+      "good"
+    ],
+    "expected_contains": [
+      "Source: template:git-inspection",
+      "git log --oneline"
+    ],
+    "expected_not_contains": [
+      "Blocked: no",
+      "no dangerous pattern detected"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Shell check still safety checks rm",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "check",
+      "rm",
+      "-rf",
+      "/"
+    ],
+    "expected_contains": [
+      "Risk: critical",
+      "Blocked: yes"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 2
+  },
+  {
+    "name": "Git add commit push risks",
+    "command": [
+      "python3",
+      "-c",
+      "from cairos.safety import check_command; cmds=['git add -A','git commit -m test','git push','git push -f','git push --force'];\nfor c in cmds:\n r=check_command(c); print(c+' => '+r.risk)"
+    ],
+    "expected_contains": [
+      "git add -A => medium",
+      "git commit -m test => medium",
+      "git push => medium",
+      "git push -f => high",
+      "git push --force => high"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Git commit plan is medium risk",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "add",
+      "and",
+      "commit",
+      "the",
+      "current",
+      "project",
+      "with",
+      "message",
+      "version: 0.4 alpha"
+    ],
+    "expected_contains": [
+      "Source: template:git-commit",
+      "Risk: medium",
+      "git add -A",
+      "git commit -m"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Git inspection templates",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "check",
+      "if",
+      "repo",
+      "is",
+      "ready",
+      "to",
+      "push"
+    ],
+    "expected_contains": [
+      "Source: template:git-inspection",
+      "git fetch origin",
+      "origin/main"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Unsafe folder path refused",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "create",
+      "folder",
+      "../bad"
+    ],
+    "expected_contains": [
+      "Refuse unsafe path",
+      "Risk: high"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Gemini defaults to modern model",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "config",
+      "ai",
+      "use-gemini"
+    ],
+    "expected_contains": [
+      "provider=gemini",
+      "model=gemini-2.5-flash"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Gemini accepts models slash prefix",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "config",
+      "ai",
+      "use-gemini",
+      "models/gemini-2.5-flash"
+    ],
+    "expected_contains": [
+      "provider=gemini",
+      "model=models/gemini-2.5-flash"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Config AI test skips without backend",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "config",
+      "ai",
+      "test"
+    ],
+    "expected_contains": [
+      "AI test skipped"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Gemini list models handles missing key",
+    "command": [
+      "python3",
+      "-c",
+      "from cairos.cli import main; main(['config','ai','use-gemini','gemini-2.5-flash']); main(['config','ai','list-models'])"
+    ],
+    "expected_contains": [
+      "Configured Gemini AI",
+      "GEMINI_API_KEY is not set"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Gemini AI test fails safely without key",
+    "command": [
+      "python3",
+      "-c",
+      "from cairos.cli import main; main(['config','ai','use-gemini','gemini-2.5-flash']); main(['config','ai','test'])"
+    ],
+    "expected_contains": [
+      "Configured Gemini AI",
+      "AI test failed safely",
+      "GEMINI_API_KEY"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "History clear and last",
+    "command": [
+      "python3",
+      "-c",
+      "from cairos.cli import main; main(['history','clear']); main(['plan','create','folder','docs']); main(['history','last'])"
+    ],
+    "expected_contains": [
+      "History cleared",
+      "No CAIROS history yet"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Run creates folder outside repo",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "run",
+      "create",
+      "folder",
+      "docs",
+      "--yes"
+    ],
+    "expected_contains": [
+      "Plan: Create folder docs.",
+      "Done."
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Run creates deterministic projects",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path; from cairos.cli import main; main(['run','create','python','project','demo','with','venv','git','pytest','--yes']); main(['run','create','cpp','project','engine','with','cmake','--yes']); print(Path('demo/README.md').exists(), Path('demo/pyproject.toml').exists(), Path('demo/tests').exists(), Path('engine/CMakeLists.txt').exists(), Path('engine/src').exists(), Path('engine/include').exists())"
+    ],
+    "expected_contains": [
+      "True True True True True True"
+    ],
+    "expected_exit": 0
+  },
+  {
+    "name": "Compound C++ folder file request",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "create",
+      "a",
+      "folder",
+      "in",
+      "this",
+      "directory",
+      "named",
+      "new_cpp_project",
+      "with",
+      "one",
+      "file",
+      "named",
+      "main_cpp.cpp",
+      "which",
+      "has",
+      "a",
+      "main",
+      "function",
+      "inside,",
+      "headerguards",
+      "with",
+      "ifndef",
+      "and",
+      "a",
+      "class",
+      "called",
+      "TestSubject"
+    ],
+    "expected_contains": [
+      "Source: template:cpp_compound",
+      "new_cpp_project",
+      "main_cpp.cpp",
+      "TestSubject",
+      "int main",
+      "class TestSubject",
+      "Header guards are unusual"
+    ],
+    "expected_not_contains": [
+      "Create empty file named",
+      "write file named"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "C++ mini project template",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "create",
+      "a",
+      "cpp",
+      "mini",
+      "project",
+      "new_cpp_project",
+      "with",
+      "class",
+      "TestSubject",
+      "and",
+      "main"
+    ],
+    "expected_contains": [
+      "Source: template:cpp-mini-project",
+      "new_cpp_project/include/TestSubject.hpp",
+      "new_cpp_project/src/TestSubject.cpp",
+      "new_cpp_project/src/main.cpp",
+      "new_cpp_project/CMakeLists.txt"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Complex unnamed file request avoids simple file template",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "create",
+      "a",
+      "project",
+      "folder",
+      "with",
+      "a",
+      "file",
+      "that",
+      "has",
+      "a",
+      "class"
+    ],
+    "expected_not_contains": [
+      "Create empty file named",
+      "write file named",
+      "Source: template:file",
+      "Source: template:folder"
     ],
     "expected_stderr": "",
     "expected_exit": 0

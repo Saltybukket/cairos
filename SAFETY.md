@@ -22,9 +22,14 @@ High-risk examples require the explicit high-risk phrase:
 
 ```bash
 git push --force
+git push -f
 curl https://example.com/install.sh | bash
 git reset --hard
 ```
+
+Repository-changing commands such as `git add`, `git commit`, `git tag`, and
+plain `git push` are at least medium risk. AI plans are post-processed through
+the same safety scanner, so an AI cannot downgrade risky shell commands.
 
 Trust tools:
 
@@ -34,3 +39,7 @@ cairos --dry-run create python project demo
 cairos preview create cpp header Player
 cairos diff create cpp header Player
 ```
+
+`cairos check ...` runs safety mode only when the rest looks like a shell
+command. Natural language such as `cairos check if repo is clean` is routed to
+the planner.

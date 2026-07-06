@@ -26,6 +26,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
 make test
+make check
 ```
 
 User-level install:
@@ -38,4 +39,15 @@ One-command bootstrap from a checkout:
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate && python -m pip install -e .
+```
+
+Make targets:
+
+```bash
+make compile
+make test
+make test-fast
+make test-ai
+make check
+make secret-check
 ```

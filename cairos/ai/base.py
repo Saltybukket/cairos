@@ -68,6 +68,11 @@ def _extract_json_object(raw: str) -> str:
     return match.group(0)
 
 
+def _normalize_gemini_model(model: str) -> str:
+    """Accept ``gemini-x`` or ``models/gemini-x`` and return ``gemini-x``."""
+    return model.removeprefix("models/").strip() or "gemini-2.5-flash"
+
+
 def _parse_plan(raw: str) -> Plan:
     """Parse and validate AI-produced JSON into a ``Plan``."""
     try:
@@ -93,12 +98,12 @@ def _parse_plan(raw: str) -> Plan:
                 path=item.get("path"),
                 content=item.get("content"),
                 changes_files=bool(item.get("changes_files", kind != "command")),
-                risk=item.get("risk", "medium"),
+                risk=item.get("risk", "medium") if item.get("risk") in {"low", "medium", "high", "critical"} else "medium",
             )
         )
 
     verification = [
-        VerificationStep(kind=v.get("kind", "file_exists"), target=str(v.get("target", "")), description=str(v.get("description", "")))
+        VerificationStep(kind=v.get("kind", "file_exists"), target=str(v.get("target", "")), description=str(v.get("description", "")), expected=str(v.get("expected", "")))
         for v in data.get("verification", [])
         if isinstance(v, dict) and v.get("target")
     ]
@@ -179,7 +184,7 @@ def _gemini_plan(request: str, config: dict[str, Any]) -> Plan:
     """Call the Gemini generateContent API and parse the returned plan."""
     ai = config["ai"]
     endpoint = ai.get("endpoint") or "https://generativelanguage.googleapis.com/v1beta"
-    model = ai.get("model") or "gemini-1.5-flash"
+    model = _normalize_gemini_model(ai.get("model") or "gemini-2.5-flash")
     key_env = ai.get("api_key_env") or "GEMINI_API_KEY"
     timeout = int(ai.get("timeout_seconds", 60))
     api_key = os.environ.get(key_env)
@@ -197,6 +202,19 @@ def _gemini_plan(request: str, config: dict[str, Any]) -> Plan:
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
             data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            raise AIPlannerError(
+                "The configured Gemini model was not found or is unavailable for this key.\n"
+                "Try:\n"
+                "  cairos config ai list-models\n"
+                "  cairos config ai use-gemini gemini-2.5-flash"
+            ) from exc
+        if exc.code in {401, 403}:
+            raise AIPlannerError("Gemini authentication failed. Check that GEMINI_API_KEY is set and valid.") from exc
+        if exc.code == 429:
+            raise AIPlannerError("Gemini rate limit or quota reached. Try again later.") from exc
+        raise AIPlannerError(f"Gemini backend failed with HTTP {exc.code}") from exc
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise AIPlannerError(f"Gemini backend failed: {exc}") from exc
     text = data["candidates"][0]["content"]["parts"][0]["text"]
@@ -231,3 +249,46 @@ def plan_with_ai(request: str) -> Plan:
     if provider == "custom-command":
         return _custom_command_plan(request, config)
     raise AIPlannerError(f"Unsupported AI provider: {provider}")
+
+
+def list_models() -> str:
+    """List configured provider models without exposing API keys."""
+    config = load_config()
+    ai = config["ai"]
+    provider = ai.get("provider", "none")
+    if provider != "gemini":
+        return f"Model listing is only implemented for Gemini. Current provider: {provider}"
+    endpoint = ai.get("endpoint") or "https://generativelanguage.googleapis.com/v1beta"
+    key_env = ai.get("api_key_env") or "GEMINI_API_KEY"
+    api_key = os.environ.get(key_env)
+    if not api_key:
+        return f"{key_env} is not set.\nRun:\n  export {key_env}=\"...\""
+    req = urllib.request.Request(endpoint.rstrip("/") + f"/models?key={api_key}", method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=int(ai.get("timeout_seconds", 60))) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        return f"Could not list Gemini models: HTTP {exc.code}"
+    except Exception as exc:
+        return f"Could not list Gemini models: {exc.__class__.__name__}"
+    names = []
+    for item in data.get("models", []):
+        methods = item.get("supportedGenerationMethods", [])
+        if "generateContent" in methods:
+            names.append(str(item.get("name", "")).removeprefix("models/"))
+    if not names:
+        return "No Gemini generateContent models returned for this key."
+    return "Gemini generateContent models:\n" + "\n".join(f"- {name}" for name in sorted(names))
+
+
+def ai_self_test() -> str:
+    """Run a tiny configured-AI smoke test and return a safe status message."""
+    config = load_config()
+    provider = config["ai"].get("provider", "none")
+    if provider == "none":
+        return "AI test skipped: no AI backend configured."
+    try:
+        plan = plan_with_ai("Return a no-op plan that prints hello.")
+    except AIPlannerError as exc:
+        return f"AI test failed safely: {exc}"
+    return f"AI test succeeded: provider={provider} source={plan.source} steps={len(plan.steps)}"

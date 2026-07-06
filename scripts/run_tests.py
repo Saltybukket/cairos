@@ -122,6 +122,7 @@ def run_case(case: dict, index: int, timeout: int) -> dict:
     expected_stderr = case.get("expected_stderr", "")
     expected_exit = case.get("expected_exit", 0)
     expected_contains = case.get("expected_contains")
+    expected_not_contains = case.get("expected_not_contains")
     expected_stderr_contains = case.get("expected_stderr_contains")
 
     output_ok = True
@@ -132,6 +133,9 @@ def run_case(case: dict, index: int, timeout: int) -> dict:
     elif expected_stdout is not None:
         output_ok = output_ok and stdout == expected_stdout
         reference_parts.append(expected_stdout)
+    if expected_not_contains is not None:
+        output_ok = output_ok and all(fragment not in stdout for fragment in expected_not_contains)
+        reference_parts.append("Expected stdout not to contain:\n" + "\n".join(expected_not_contains) + "\n")
 
     if expected_stderr_contains is not None:
         output_ok = output_ok and all(fragment in stderr for fragment in expected_stderr_contains)
@@ -155,6 +159,7 @@ def run_case(case: dict, index: int, timeout: int) -> dict:
         "expected_stdout": expected_stdout,
         "expected_stderr": expected_stderr,
         "expected_contains": expected_contains,
+        "expected_not_contains": expected_not_contains,
         "expected_stderr_contains": expected_stderr_contains,
         "actual_stdout": stdout,
         "actual_stderr": stderr,
@@ -208,6 +213,8 @@ def render_report(results: list[dict]) -> str:
             expected_parts.append("Expected stdout to contain:\n" + "\n".join(r["expected_contains"]) + "\n")
         elif r["expected_stdout"] is not None:
             expected_parts.append(r["expected_stdout"] or "")
+        if r.get("expected_not_contains") is not None:
+            expected_parts.append("Expected stdout not to contain:\n" + "\n".join(r["expected_not_contains"]) + "\n")
         if r["expected_stderr_contains"] is not None:
             expected_parts.append("Expected stderr to contain:\n" + "\n".join(r["expected_stderr_contains"]) + "\n")
         else:

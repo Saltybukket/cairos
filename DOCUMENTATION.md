@@ -713,3 +713,153 @@ install_dependencies.sh
 ```
 
 The runtime uses Python 3.10+ and the standard library only.
+
+---
+
+## 24. Reserved Words and Natural Language
+
+Some words are both useful command modes and normal English verbs. `check` is
+the most important example.
+
+CAIROS uses safety-check mode when the rest looks like a shell command:
+
+```bash
+cairos check rm -rf /
+cairos check git push --force
+cairos check chmod -R 777 /
+```
+
+CAIROS routes natural language to the planner:
+
+```bash
+cairos check if repo is ready to commit
+cairos check the commit log and give me a summary
+```
+
+Escape hatches:
+
+```bash
+cairos -- check the commit log and summarize it
+cairos ask check if repo is ready to push
+```
+
+---
+
+## 25. Gemini Model Handling
+
+Recommended Gemini model:
+
+```text
+gemini-2.5-flash
+```
+
+Commands:
+
+```bash
+cairos config ai use-gemini gemini-2.5-flash
+cairos config ai list-models
+cairos config ai test
+```
+
+If a configured model returns 404, it is unavailable for the current key. List
+models and switch to one that supports `generateContent`.
+
+---
+
+## 26. Git Inspection
+
+Read-only Git inspection templates:
+
+```bash
+cairos git summary
+cairos summarize commit log
+cairos check if repo is ready to commit
+cairos check if repo is ready to push
+```
+
+These run plans containing commands such as:
+
+```bash
+git status --short
+git branch --show-current
+git log --oneline --decorate --graph --max-count=10
+git diff --stat
+git diff --cached --stat
+```
+
+Push readiness may include `git fetch origin`, which updates remote-tracking
+references but does not merge or push.
+
+---
+
+## 27. Bash Script Templates
+
+Example:
+
+```bash
+cairos plan create bash script branch_info that prints current git branch and folder
+```
+
+CAIROS writes a `.sh` file with a shebang, `set -euo pipefail`, `pwd`, and
+`git branch --show-current` with a non-repository fallback. It also plans
+`chmod +x`.
+
+---
+
+## 28. Compound C++ Requests
+
+CAIROS supports small multi-target C++ requests when the names are explicit:
+
+```bash
+cairos plan create a folder in this directory named new_cpp_project \
+  with one file named "main_cpp.cpp" \
+  which has a main function inside, headerguards with ifndef \
+  and a class called TestSubject
+```
+
+This creates a plan for:
+
+```text
+new_cpp_project/
+new_cpp_project/main_cpp.cpp
+```
+
+The generated file includes an include guard, `class TestSubject`, and
+`int main()`. CAIROS also notes that header guards are normally for `.hpp`/`.h`
+files, not `.cpp` implementation files.
+
+Preferred C++ layout:
+
+```bash
+cairos plan create a cpp mini project new_cpp_project with class TestSubject and main
+```
+
+This creates separate `include/`, `src/`, and `CMakeLists.txt` files.
+
+Simple one-target templates, such as `create file README.md`, intentionally step
+back when a request mentions several creation targets plus requested content.
+That prevents accidental plans such as creating a file literally named `named`.
+
+---
+
+## 29. AI Safety Post-Processing
+
+AI output must be JSON. CAIROS validates it, converts it into a `Plan`, scans
+commands with the same safety layer as deterministic templates, and upgrades
+risk when needed. For example, `git add` and `git commit` are medium risk even
+if an AI labels them low.
+
+---
+
+## 30. Windows and WSL
+
+For WSL projects, install and run CAIROS inside the WSL distribution:
+
+```bash
+cd /home/student/projects/cairos
+python -m pip install -e .
+cairos doctor
+```
+
+Windows can edit files through `\\wsl.localhost\...`, but the shell command
+should execute in WSL so paths, git, venvs and permissions behave consistently.

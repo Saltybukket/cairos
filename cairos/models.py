@@ -22,9 +22,10 @@ RISK_ORDER: dict[str, int] = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 class VerificationStep:
     """A small post-execution check, for example that a file exists."""
 
-    kind: Literal["file_exists", "dir_exists", "command_succeeds"]
+    kind: Literal["file_exists", "dir_exists", "command_succeeds", "command_output_equals"]
     target: str
     description: str = ""
+    expected: str = ""
 
 
 @dataclass

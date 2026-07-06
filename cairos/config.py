@@ -104,7 +104,7 @@ def configure_openai(model: str = "gpt-4.1-mini", api_key_env: str = "OPENAI_API
     return save_config(config)
 
 
-def configure_gemini(model: str = "gemini-1.5-flash", api_key_env: str = "GEMINI_API_KEY") -> Path:
+def configure_gemini(model: str = "gemini-2.5-flash", api_key_env: str = "GEMINI_API_KEY") -> Path:
     """Configure CAIROS to use Google's Gemini API without storing the key."""
     config = load_config()
     config["ai"].update({"provider": "gemini", "model": model, "endpoint": "https://generativelanguage.googleapis.com/v1beta", "api_key_env": api_key_env})
@@ -154,10 +154,11 @@ def ai_status() -> str:
         lines.append(f"api_key_available: {'yes' if os.environ.get(env_name) else 'no'}")
     elif provider == "gemini":
         env_name = ai.get("api_key_env") or "GEMINI_API_KEY"
-        lines.append(f"model: {ai.get('model') or 'gemini-1.5-flash'}")
+        lines.append(f"model: {ai.get('model') or 'gemini-2.5-flash'}")
         lines.append(f"endpoint: {ai.get('endpoint') or 'https://generativelanguage.googleapis.com/v1beta'}")
         lines.append(f"api_key_env: {env_name}")
         lines.append(f"api_key_available: {'yes' if os.environ.get(env_name) else 'no'}")
+        lines.append("hint: run `cairos config ai list-models` if the configured model is unavailable")
     elif provider == "custom-command":
         lines.append(f"custom_command: {ai.get('custom_command') or '<not set>'}")
         lines.append("contract: command reads CAIROS JSON from stdin and prints plan JSON to stdout")

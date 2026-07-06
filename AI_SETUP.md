@@ -29,11 +29,25 @@ Store the key only in your environment:
 
 ```bash
 export GEMINI_API_KEY="your-key"
-cairos config ai use-gemini gemini-1.5-flash
+cairos config ai use-gemini gemini-2.5-flash
 cairos config ai status
+cairos config ai test
 ```
 
 CAIROS never writes the raw key to config, logs, reports or docs.
+
+List models available to the current key:
+
+```bash
+cairos config ai list-models
+```
+
+If Gemini returns a 404, the configured model is unavailable for that key. Run:
+
+```bash
+cairos config ai list-models
+cairos config ai use-gemini gemini-2.5-flash
+```
 
 ## OpenAI-Compatible API
 
@@ -56,3 +70,9 @@ cairos config ai use-custom python3 ~/my_cairos_planner.py
 ```
 
 The command reads JSON on stdin and prints validated CAIROS plan JSON on stdout.
+
+## AI Safety
+
+AI-generated risk labels are not trusted blindly. CAIROS validates the JSON,
+converts it to structured steps, runs the normal safety scanner, and executes
+only through `cairos run ...` with confirmation.
