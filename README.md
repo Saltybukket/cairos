@@ -2,7 +2,7 @@
 
 **CAIROS — Context-Aware Intelligent Runtime Operating Shell**
 
-CAIROS is a context-aware command assistant that lives inside your normal shell. It is **not** a replacement for zsh, bash or fish. You install it as a normal console command and use it while working inside any project directory.
+CAIROS is a context-aware command assistant that lives inside your normal shell. It is **not** a replacement for zsh, bash or fish. Install the package `cairos-shell` once, then use the `cairos` command from any directory.
 
 ```bash
 cairos macke python projekt demo mit venv git pytest
@@ -25,9 +25,7 @@ CAIROS first tries deterministic templates with typo-tolerant matching. Direct `
 ## Quick start for development
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
+pipx install --editable .
 cairos --version
 make test
 make check
@@ -35,16 +33,23 @@ make check
 
 ## Install as a console helper
 
-From a checkout:
+Recommended:
 
 ```bash
-python -m pip install .
+pipx install cairos-shell
+cairos setup
 ```
 
-For a user-level isolated install, use `pipx`:
+From GitHub:
 
 ```bash
-pipx install .
+pipx install git+https://github.com/<user>/<repo>.git
+```
+
+Fallback:
+
+```bash
+python -m pip install --user cairos-shell
 ```
 
 After installation, `cairos` can be used from any folder.

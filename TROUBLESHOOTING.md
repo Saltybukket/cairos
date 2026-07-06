@@ -1,5 +1,28 @@
 # CAIROS Troubleshooting
 
+## `cairos` command not found
+
+Recommended install:
+
+```bash
+pipx install cairos-shell
+```
+
+Check installation details:
+
+```bash
+cairos install-info
+```
+
+If installed with `python -m pip install --user cairos-shell`, ensure
+`~/.local/bin` is on `PATH`:
+
+```bash
+echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.profile
+```
+
+Restart the terminal after changing `PATH`.
+
 ## No deterministic match
 
 Configure AI or add a template:
@@ -42,3 +65,8 @@ cairos -- check the commit log and summarize it
 Install inside the WSL distribution where you want to use CAIROS. Windows can
 edit files through the UNC path, but the `cairos` executable should run inside
 WSL for WSL projects.
+
+## Shell helper
+
+`cairos shell install zsh` currently prints an optional zsh snippet. It does not
+modify `~/.zshrc` unless a future version asks for confirmation.

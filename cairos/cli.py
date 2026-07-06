@@ -10,7 +10,10 @@ while everything else is treated as a task and passed to the planner.
 
 from __future__ import annotations
 
+import os
+import shutil
 import sys
+from pathlib import Path
 from . import __version__
 from .ai import ai_self_test, list_models
 from .config import (
@@ -28,7 +31,7 @@ from .context import context_json, context_summary
 from .executor import execute_plan
 from .explain import explain_command
 from .formatter import format_plan
-from .history import append_history, clear_history, format_history
+from .history import append_history, clear_history, format_history, history_path
 from .planner import make_plan
 from .preview import diff_plan, preview_plan
 from .rules import init_global_rules, init_local_rules, rules_json, set_rule
@@ -65,8 +68,10 @@ Usage:
   cairos rules show
   cairos rules set <key.path> <value> [--global]
   cairos doctor
+  cairos install-info
   cairos init [--global]
   cairos setup
+  cairos shell install zsh
   cairos history [last|clear]
 
 Examples:
@@ -359,6 +364,63 @@ def _handle_doctor() -> int:
     return 0
 
 
+def _user_bin_path() -> Path:
+    """Return the common user-level script directory."""
+    return Path.home() / ".local" / "bin"
+
+
+def _path_contains(path: Path) -> bool:
+    """Return True when ``path`` appears in PATH."""
+    target = str(path)
+    return any(part.rstrip("/") == target for part in os.environ.get("PATH", "").split(os.pathsep) if part)
+
+
+def _install_mode() -> str:
+    """Best-effort description of how CAIROS is running."""
+    exe = str(Path(sys.executable))
+    module_path = Path(__file__).resolve()
+    cwd = Path.cwd().resolve()
+    if "pipx" in exe:
+        return "pipx"
+    if cwd == module_path or cwd in module_path.parents:
+        return "source/editable checkout"
+    if ".venv" in exe or "site-packages" in str(module_path):
+        return "virtualenv or user Python"
+    return "unknown"
+
+
+def _path_status_lines() -> list[str]:
+    user_bin = _user_bin_path()
+    if _path_contains(user_bin):
+        return [f"PATH: ok ({user_bin} is visible)"]
+    return [
+        f"PATH: warning ({user_bin} is not on PATH)",
+        "Fix for bash/zsh:",
+        f"  echo 'export PATH=\"$PATH:{user_bin}\"' >> ~/.profile",
+        "  restart your terminal",
+    ]
+
+
+def _install_info() -> str:
+    """Return end-user installation diagnostics."""
+    lines = [
+        "CAIROS install info",
+        f"command path: {shutil.which('cairos') or '<not found on PATH>'}",
+        f"python executable: {sys.executable}",
+        f"package version: {__version__}",
+        f"config path: {config_path()}",
+        f"history path: {history_path()}",
+        f"install mode: {_install_mode()}",
+    ]
+    lines.extend(_path_status_lines())
+    return "\n".join(lines)
+
+
+def _handle_install_info() -> int:
+    print(_install_info())
+    return 0
+
+
 def _handle_init(args: list[str]) -> int:
     if "--global" in args:
         from .config import save_config, load_config
@@ -376,13 +438,35 @@ def _handle_init(args: list[str]) -> int:
 def _handle_setup() -> int:
     print("CAIROS setup")
     print(f"Config path: {config_path()}")
+    print(f"History path: {history_path()}")
+    for line in _path_status_lines():
+        print(line)
+    print(ai_status())
+    print("Recommended install:")
+    print("- pipx install cairos-shell")
     print("Useful next commands:")
     print("- cairos init")
     print("- cairos config ai use-ollama llama3.1")
     print("- cairos config ai use-gemini gemini-2.5-flash")
+    print("- cairos config ai use-openai gpt-4.1-mini")
     print("- cairos config ai status")
+    print("- cairos install-info")
     print("- cairos doctor")
     return 0
+
+
+def _handle_shell(args: list[str]) -> int:
+    if args[:2] == ["install", "zsh"]:
+        print("CAIROS zsh shell helper")
+        print("No shell files were modified.")
+        print("Add this optional snippet to ~/.zshrc if you want a tiny helper:")
+        print("")
+        print("# CAIROS helper")
+        print("alias c='cairos'")
+        print("# Try: c setup")
+        return 0
+    print("Unknown shell command. Try: cairos shell install zsh", file=sys.stderr)
+    return 1
 
 
 def _handle_history(args: list[str]) -> int:
@@ -459,10 +543,14 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_rules(rest)
     if command == "doctor":
         return _handle_doctor()
+    if command == "install-info":
+        return _handle_install_info()
     if command == "init":
         return _handle_init(rest)
     if command == "setup":
         return _handle_setup()
+    if command == "shell":
+        return _handle_shell(rest)
     if command == "history":
         return _handle_history(rest)
 

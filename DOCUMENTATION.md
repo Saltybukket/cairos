@@ -50,10 +50,31 @@ python -m pip install .
 ### Recommended user install with `pipx`
 
 ```bash
-pipx install .
+pipx install cairos-shell
+cairos setup
 ```
 
 Then `cairos` is available in your shell from any folder.
+
+Development checkout:
+
+```bash
+pipx install --editable .
+```
+
+Install from GitHub:
+
+```bash
+pipx install git+https://github.com/<user>/<repo>.git
+```
+
+Fallback without pipx:
+
+```bash
+python -m pip install --user cairos-shell
+```
+
+The PyPI package name is `cairos-shell`; the console command remains `cairos`.
 
 ---
 
@@ -98,6 +119,7 @@ cairos context [--json]
 cairos config ...
 cairos rules ...
 cairos doctor
+cairos install-info
 cairos history
 cairos --dry-run <task>
 cairos preview <task>
@@ -714,9 +736,45 @@ install_dependencies.sh
 
 The runtime uses Python 3.10+ and the standard library only.
 
+Global locations:
+
+```text
+~/.config/cairos/config.json
+~/.local/state/cairos/history.jsonl
+.cairos/rules.json
+```
+
+Project-local rules are optional. They only exist when you run `cairos init` in
+a project.
+
 ---
 
-## 24. Reserved Words and Natural Language
+## 24. Setup and Install Info
+
+Run:
+
+```bash
+cairos setup
+cairos install-info
+```
+
+`setup` prints config and history locations, checks whether `~/.local/bin` is
+on `PATH`, shows AI status, and suggests Ollama/Gemini/OpenAI setup commands.
+`install-info` prints the command path, Python executable, CAIROS version,
+config path, history path, install mode and PATH status.
+
+Shell integration placeholder:
+
+```bash
+cairos shell install zsh
+```
+
+For now this only prints an optional snippet. It does not silently modify shell
+configuration files.
+
+---
+
+## 25. Reserved Words and Natural Language
 
 Some words are both useful command modes and normal English verbs. `check` is
 the most important example.
@@ -745,7 +803,7 @@ cairos ask check if repo is ready to push
 
 ---
 
-## 25. Gemini Model Handling
+## 26. Gemini Model Handling
 
 Recommended Gemini model:
 
@@ -766,7 +824,7 @@ models and switch to one that supports `generateContent`.
 
 ---
 
-## 26. Git Inspection
+## 27. Git Inspection
 
 Read-only Git inspection templates:
 
@@ -792,7 +850,7 @@ references but does not merge or push.
 
 ---
 
-## 27. Bash Script Templates
+## 28. Bash Script Templates
 
 Example:
 
@@ -806,7 +864,7 @@ CAIROS writes a `.sh` file with a shebang, `set -euo pipefail`, `pwd`, and
 
 ---
 
-## 28. Compound C++ Requests
+## 29. Compound C++ Requests
 
 CAIROS supports small multi-target C++ requests when the names are explicit:
 
@@ -842,7 +900,7 @@ That prevents accidental plans such as creating a file literally named `named`.
 
 ---
 
-## 29. AI Safety Post-Processing
+## 30. AI Safety Post-Processing
 
 AI output must be JSON. CAIROS validates it, converts it into a `Plan`, scans
 commands with the same safety layer as deterministic templates, and upgrades
@@ -851,7 +909,7 @@ if an AI labels them low.
 
 ---
 
-## 30. Windows and WSL
+## 31. Windows and WSL
 
 For WSL projects, install and run CAIROS inside the WSL distribution:
 

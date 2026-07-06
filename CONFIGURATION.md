@@ -24,6 +24,7 @@ Initialize:
 cairos init
 cairos init --global
 cairos setup
+cairos install-info
 ```
 
 AI:
@@ -38,3 +39,11 @@ cairos config ai list-models
 ```
 
 CAIROS stores environment variable names, never raw API keys.
+
+Install CAIROS once with:
+
+```bash
+pipx install cairos-shell
+```
+
+The package name is `cairos-shell`; the terminal command is `cairos`.

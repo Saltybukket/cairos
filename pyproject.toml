@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cairos"
+name = "cairos-shell"
 version = "0.3.0"
 description = "Context-Aware Intelligent Runtime Operating Shell"
 readme = "README.md"

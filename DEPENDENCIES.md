@@ -13,32 +13,36 @@ Development and test tools:
 - Optional: `pipx` for isolated installation
 - Optional: `ollama` for local AI fallback
 
-Install CAIROS from this checkout:
+Recommended user install:
 
 ```bash
-python -m pip install .
+pipx install cairos-shell
 ```
 
 Editable development install:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
+pipx install --editable .
 make test
 make check
 ```
 
-User-level install:
+GitHub install:
 
 ```bash
-pipx install .
+pipx install git+https://github.com/<user>/<repo>.git
+```
+
+Fallback:
+
+```bash
+python -m pip install --user cairos-shell
 ```
 
 One-command bootstrap from a checkout:
 
 ```bash
-python3 -m venv .venv && . .venv/bin/activate && python -m pip install -e .
+pipx install --editable . && cairos setup
 ```
 
 Make targets:

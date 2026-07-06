@@ -907,5 +907,102 @@
     ],
     "expected_stderr": "",
     "expected_exit": 0
+  },
+  {
+    "name": "Setup shows install and state paths",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "setup"
+    ],
+    "expected_contains": [
+      "CAIROS setup",
+      "Config path:",
+      "History path:",
+      "Recommended install:",
+      "pipx install cairos-shell",
+      "cairos config ai use-gemini gemini-2.5-flash"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Install info shows paths and mode",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "install-info"
+    ],
+    "expected_contains": [
+      "CAIROS install info",
+      "command path:",
+      "python executable:",
+      "package version:",
+      "config path:",
+      "history path:",
+      "install mode:",
+      "PATH:"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Doctor shows setup diagnostics",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "doctor"
+    ],
+    "expected_contains": [
+      "CAIROS Doctor",
+      "version:",
+      "python:",
+      "executable:",
+      "config path:",
+      "AI configuration:",
+      "Context:"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Setup warns when user bin missing from PATH",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "setup"
+    ],
+    "env": {
+      "PATH": "/usr/bin:/bin"
+    },
+    "expected_contains": [
+      "PATH: warning",
+      ".local/bin is not on PATH",
+      "Fix for bash/zsh"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Shell install zsh is non destructive",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "shell",
+      "install",
+      "zsh"
+    ],
+    "expected_contains": [
+      "CAIROS zsh shell helper",
+      "No shell files were modified",
+      "alias c='cairos'"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
   }
 ]

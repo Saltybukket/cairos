@@ -87,6 +87,7 @@ def _run_cairos_in_process(argv: list[str], stdin_text: str | None, cwd: Path, e
 def run_case(case: dict, index: int, timeout: int) -> dict:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(Path.cwd()) + os.pathsep + env.get("PYTHONPATH", "")
+    env.update(case.get("env", {}))
     with tempfile.TemporaryDirectory(prefix="cairos-test-home-") as temp_home, tempfile.TemporaryDirectory(prefix="cairos-test-cwd-") as temp_cwd:
         env["HOME"] = temp_home
         cwd = Path(case.get("cwd", temp_cwd)) if case.get("cwd") else Path(temp_cwd)
