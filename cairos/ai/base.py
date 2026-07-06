@@ -21,7 +21,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from ..config import env_var_hint, load_config
+from ..config import env_var_setup_hint, load_config
 from ..context import collect_context
 from ..models import CommandStep, Plan, VerificationStep
 from ..rules import load_rules
@@ -58,13 +58,14 @@ def _build_payload(request: str) -> dict[str, Any]:
 
 
 def _missing_key_message(key_env: str) -> str:
-    hints = "\n".join(f"  {line}" for line in env_var_hint(key_env))
     return (
         f"Missing API key environment variable: {key_env}\n\n"
-        "Set it for this shell:\n"
-        f"{hints}\n\n"
+        f"{env_var_setup_hint(key_env)}\n\n"
         "Then test:\n"
         "  cairos config ai test\n\n"
+        "Or switch to another saved AI profile:\n"
+        "  cairos config ai profiles\n"
+        "  cairos config ai switch\n\n"
         "For persistent setup, add it to your shell profile or a sourced secrets file."
     )
 
@@ -274,8 +275,7 @@ def list_models() -> str:
     key_env = ai.get("api_key_env") or "GEMINI_API_KEY"
     api_key = os.environ.get(key_env)
     if not api_key:
-        hints = "\n".join(f"  {line}" for line in env_var_hint(key_env))
-        return f"{key_env} is not set.\nRun:\n{hints}"
+        return f"{key_env} is not set.\nRun:\n{env_var_setup_hint(key_env)}"
     req = urllib.request.Request(endpoint.rstrip("/") + f"/models?key={api_key}", method="GET")
     try:
         with urllib.request.urlopen(req, timeout=int(ai.get("timeout_seconds", 60))) as response:

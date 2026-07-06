@@ -36,22 +36,48 @@ Restart the terminal after changing `PATH`.
 Configure AI or add a template:
 
 ```bash
-cairos config ai use-ollama llama3.1
-cairos config ai use-gemini gemini-2.5-flash
+cairos config ai list-providers
+cairos config ai use-ollama llama3.1 --profile ollama-local
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 ```
 
 ## Gemini model not found
 
 ```bash
 cairos config ai list-models
-cairos config ai use-gemini gemini-2.5-flash
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 ```
 
 ## Gemini key missing
 
+Bash/zsh/WSL:
+
 ```bash
 export GEMINI_API_KEY="your-key"
 cairos config ai test
+```
+
+PowerShell:
+
+```powershell
+$env:GEMINI_API_KEY="your-key"
+[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-key", "User")
+cairos config ai test
+```
+
+cmd.exe:
+
+```cmd
+set GEMINI_API_KEY=your-key
+setx GEMINI_API_KEY "your-key"
+cairos config ai test
+```
+
+Switch to another saved profile:
+
+```bash
+cairos config ai profiles
+cairos config ai switch
 ```
 
 ## Check command did the wrong thing

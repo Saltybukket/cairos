@@ -26,7 +26,7 @@ Optional Gemini setup:
 
 ```bash
 export GEMINI_API_KEY="your-key"
-cairos config ai use-gemini gemini-2.5-flash
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 cairos config ai test
 ```
 
@@ -39,12 +39,21 @@ pipx install git+https://github.com/Saltybukket/cairos.git
 cairos quicksetup
 ```
 
-Gemini:
+Gemini in PowerShell:
 
 ```powershell
-setx GEMINI_API_KEY "your-key"
 $env:GEMINI_API_KEY="your-key"
-cairos config ai use-gemini gemini-2.5-flash
+[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-key", "User")
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
+cairos config ai test
+```
+
+Gemini in cmd.exe:
+
+```cmd
+set GEMINI_API_KEY=your-key
+setx GEMINI_API_KEY "your-key"
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 cairos config ai test
 ```
 

@@ -14,7 +14,7 @@ cairos config ai disable
 ## Ollama
 
 ```bash
-cairos config ai use-ollama llama3.1
+cairos config ai use-ollama llama3.1 --profile ollama-local
 ollama pull llama3.1
 ollama serve
 ```
@@ -31,9 +31,25 @@ Store the key only in your environment:
 
 ```bash
 export GEMINI_API_KEY="your-key"
-cairos config ai use-gemini gemini-2.5-flash
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 cairos config ai status
 cairos config ai test
+```
+
+PowerShell:
+
+```powershell
+$env:GEMINI_API_KEY="your-key"
+[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-key", "User")
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
+```
+
+cmd.exe:
+
+```cmd
+set GEMINI_API_KEY=your-key
+setx GEMINI_API_KEY "your-key"
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 ```
 
 CAIROS never writes the raw key to config, logs, reports or docs.
@@ -48,22 +64,38 @@ If Gemini returns a 404, the configured model is unavailable for that key. Run:
 
 ```bash
 cairos config ai list-models
-cairos config ai use-gemini gemini-2.5-flash
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 ```
 
 ## OpenAI-Compatible API
 
 ```bash
 export OPENAI_API_KEY="your-key"
-cairos config ai use-openai gpt-4.1-mini
+cairos config ai use-openai gpt-4.1-mini --profile openai-mini
 cairos config ai set-openai-endpoint https://api.openai.com/v1
 ```
 
 Custom environment variable:
 
 ```bash
-cairos config ai use-openai gpt-4.1-mini --api-key-env MY_API_KEY
+cairos config ai use-openai gpt-4.1-mini --api-key-env MY_API_KEY --profile openai-mini
 ```
+
+## AI Profiles
+
+Save multiple providers/models and switch quickly:
+
+```bash
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
+cairos config ai use-openai gpt-4.1-mini --profile openai-mini
+cairos config ai use-ollama llama3.1 --profile ollama-local
+
+cairos config ai profiles
+cairos config ai switch
+cairos config ai use-profile openai-mini
+```
+
+CAIROS stores only environment variable names in profiles, never raw API keys.
 
 ## Custom Command
 

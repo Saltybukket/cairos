@@ -19,6 +19,9 @@ from . import __version__
 from .ai import ai_self_test, list_models
 from .config import (
     ai_status,
+    activate_ai_profile,
+    active_ai_profile_name,
+    ai_profiles,
     config_dir,
     config_json,
     config_path,
@@ -26,8 +29,12 @@ from .config import (
     configure_custom_command,
     configure_ollama,
     configure_openai,
+    delete_ai_profile,
     disable_ai,
-    env_var_hint,
+    env_var_setup_hint,
+    load_config,
+    rename_ai_profile,
+    save_current_ai_profile,
     set_config_value,
     shell_guess,
     state_dir,
@@ -69,6 +76,7 @@ Usage:
   cairos config ai use-gemini [model] [--api-key-env ENV]
   cairos config ai use-custom <command>
   cairos config ai disable
+  cairos ai <config-ai command>
   cairos config set <key.path> <value>
   cairos rules init [--global]
   cairos rules show
@@ -87,7 +95,7 @@ Examples:
   cairos check if repo is ready to commit
   cairos plan create python project demo with venv git pytest
   cairos run create folder docs
-  cairos config ai use-gemini gemini-2.5-flash
+  cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
   cairos macke python projekt testapp mit venv git pytest
   cairos create cpp header file Player
 """
@@ -233,6 +241,104 @@ def _handle_context(args: list[str]) -> int:
     return 0
 
 
+def _ai_help_text() -> str:
+    return """CAIROS AI configuration
+
+Status:
+  cairos config ai status
+  cairos config ai test
+
+Profiles:
+  cairos config ai profiles
+  cairos config ai switch
+  cairos config ai use-profile <name>
+  cairos config ai save-profile <name>
+  cairos config ai delete-profile <name>
+
+Providers:
+  cairos config ai list-providers
+  cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
+  cairos config ai use-openai gpt-4.1-mini --profile openai-mini
+  cairos config ai use-ollama llama3.1 --profile ollama-local
+  cairos config ai use-custom <command> --profile custom-local
+  cairos config ai disable
+
+Models:
+  cairos config ai list-models
+
+Never store raw API keys in CAIROS config. Store only environment variable names."""
+
+
+def _print_env_next(env_name: str) -> None:
+    print("Next:")
+    print(env_var_setup_hint(env_name))
+    print("Then test: cairos config ai test")
+
+
+def _print_provider_list() -> None:
+    print("Supported AI providers:")
+    print("- none")
+    print("- ollama")
+    print("- gemini")
+    print("- openai")
+    print("- custom-command")
+    print("")
+    print("Setup examples:")
+    print("  cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash")
+    print("  cairos config ai use-openai gpt-4.1-mini --profile openai-mini")
+    print("  cairos config ai use-ollama llama3.1 --profile ollama-local")
+
+
+def _profile_key_status(profile: dict[str, object]) -> str:
+    provider = str(profile.get("provider", "none"))
+    env_name = str(profile.get("api_key_env", "") or "")
+    if provider in {"ollama", "none", "custom-command"} or not env_name:
+        return "local" if provider == "ollama" else "none"
+    return "available" if os.environ.get(env_name) else "missing"
+
+
+def _format_profile_summary(name: str, profile: dict[str, object], active: str) -> list[str]:
+    mark = "*" if name == active else " "
+    env_name = str(profile.get("api_key_env", "") or "none")
+    return [
+        f"{mark} {name}",
+        f"  provider: {profile.get('provider', 'none')}",
+        f"  model: {profile.get('model', '') or '<not set>'}",
+        f"  endpoint: {profile.get('endpoint', '') or '<not set>'}",
+        f"  key env: {env_name}",
+        f"  key available: {_profile_key_status(profile)}",
+    ]
+
+
+def _profiles_text() -> str:
+    profiles = ai_profiles()
+    active = active_ai_profile_name()
+    if not profiles:
+        return "AI Profiles\n\nNo saved AI profiles yet.\nTry: cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash"
+    lines = ["AI Profiles", ""]
+    for name in sorted(profiles):
+        lines.extend(_format_profile_summary(name, profiles[name], active))
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
+def _print_unknown_ai_command(command: str) -> int:
+    print(f"Unknown AI config command: {command}", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("Try:", file=sys.stderr)
+    print("  cairos config ai --help", file=sys.stderr)
+    print("  cairos config ai status", file=sys.stderr)
+    print("  cairos config ai profiles", file=sys.stderr)
+    print("  cairos config ai list-providers", file=sys.stderr)
+    if "cairos" in command:
+        print("", file=sys.stderr)
+        print("It looks like two commands may have been pasted together.", file=sys.stderr)
+        print("Run them separately, for example:", file=sys.stderr)
+        print("  cairos config ai list-providers", file=sys.stderr)
+        print("  cairos config ai status", file=sys.stderr)
+    return 1
+
+
 def _iter_find_dir_roots() -> list[Path]:
     home = Path.home()
     roots = [Path.cwd(), home, home / "projects", home / "Desktop", home / "Documents", home / "Downloads"]
@@ -301,6 +407,10 @@ def _handle_find_dir(args: list[str]) -> int:
 
 def _handle_config_ai(args: list[str]) -> int:
     """Handle ``cairos config ai ...`` commands."""
+    if args and args[0] in {"-h", "--help", "help"}:
+        print(_ai_help_text())
+        return 0
+
     if not args or args[0] == "status":
         print(ai_status())
         return 0
@@ -309,43 +419,131 @@ def _handle_config_ai(args: list[str]) -> int:
         print(ai_self_test())
         return 0
 
+    if args[0] == "list-providers":
+        _print_provider_list()
+        return 0
+
+    if args[0] in {"profiles", "list-profiles", "list"}:
+        print(_profiles_text())
+        return 0
+
+    if args[0] in {"use-profile", "use"} and len(args) >= 2:
+        name = args[1]
+        try:
+            activate_ai_profile(name)
+        except KeyError:
+            print(f"Unknown AI profile: {name}", file=sys.stderr)
+            print("Run: cairos config ai profiles", file=sys.stderr)
+            return 1
+        ai = load_config()["ai"]
+        print(f"Activated AI profile: {name}")
+        print(f"provider={ai.get('provider')} model={ai.get('model') or '<not set>'} api_key_env={ai.get('api_key_env') or 'none'}")
+        print("Next: cairos config ai test")
+        return 0
+
+    if args[0] == "show-profile" and len(args) >= 2:
+        name = args[1]
+        profiles = ai_profiles()
+        if name not in profiles:
+            print(f"Unknown AI profile: {name}", file=sys.stderr)
+            return 1
+        print("\n".join(_format_profile_summary(name, profiles[name], active_ai_profile_name())))
+        return 0
+
+    if args[0] == "save-profile" and len(args) >= 2:
+        path = save_current_ai_profile(args[1])
+        print(f"Saved current AI config as profile: {args[1]}")
+        print(f"Updated {path}")
+        return 0
+
+    if args[0] == "delete-profile" and len(args) >= 2:
+        force = "--force" in args
+        try:
+            path = delete_ai_profile(args[1], force=force)
+        except ValueError:
+            print("Cannot delete active profile. Switch to another profile first.", file=sys.stderr)
+            return 1
+        except KeyError:
+            print(f"Unknown AI profile: {args[1]}", file=sys.stderr)
+            return 1
+        print(f"Deleted AI profile: {args[1]}")
+        print(f"Updated {path}")
+        return 0
+
+    if args[0] == "rename-profile" and len(args) >= 3:
+        try:
+            path = rename_ai_profile(args[1], args[2])
+        except KeyError:
+            print(f"Unknown AI profile: {args[1]}", file=sys.stderr)
+            return 1
+        print(f"Renamed AI profile: {args[1]} -> {args[2]}")
+        print(f"Updated {path}")
+        return 0
+
+    if args[0] in {"switch", "select"}:
+        profiles = ai_profiles()
+        if not profiles:
+            print(_profiles_text())
+            return 1
+        names = sorted(profiles)
+        print("Choose AI profile:")
+        print("")
+        for index, name in enumerate(names, 1):
+            profile = profiles[name]
+            print(f"[{index}] {name:<18} {profile.get('provider', 'none'):<8} {str(profile.get('model', '') or '<not set>'):<20} key: {_profile_key_status(profile)}")
+        print("")
+        if not sys.stdin.isatty():
+            print("Non-interactive shell. Use:")
+            print("  cairos config ai use-profile <name>")
+            return 0
+        answer = input("Enter number: ").strip()
+        try:
+            choice = int(answer)
+            selected = names[choice - 1]
+        except (ValueError, IndexError):
+            print("Invalid selection.", file=sys.stderr)
+            return 1
+        return _handle_config_ai(["use-profile", selected])
+
     if args[0] == "list-models":
         print(list_models())
         return 0
 
     if args[0] in {"use-ollama", "set-local", "local", "ollama"}:
-        model_args = _without_flags(args[1:], {"--endpoint"})
+        model_args = _without_flags(args[1:], {"--endpoint", "--profile"})
         model = model_args[0] if model_args else "llama3.1"
         endpoint = _extract_flag_value(args, "--endpoint", "http://localhost:11434")
-        path = configure_ollama(model=model, endpoint=endpoint)
+        profile = _extract_flag_value(args, "--profile", "")
+        path = configure_ollama(model=model, endpoint=endpoint, profile=profile or None)
         print(f"Configured local Ollama AI in {path}")
         print(f"provider=ollama model={model} endpoint={endpoint}")
+        print(f"active_profile={active_ai_profile_name() or '<none>'}")
         print(f"Next: ollama pull {model} && ollama serve")
         return 0
 
     if args[0] in {"use-openai", "openai", "api"}:
-        model_args = _without_flags(args[1:], {"--api-key-env", "--endpoint"})
+        model_args = _without_flags(args[1:], {"--api-key-env", "--endpoint", "--profile"})
         model = model_args[0] if model_args else "gpt-4.1-mini"
         api_key_env = _extract_flag_value(args, "--api-key-env", "OPENAI_API_KEY")
         endpoint = _extract_flag_value(args, "--endpoint", "https://api.openai.com/v1")
-        path = configure_openai(model=model, api_key_env=api_key_env, endpoint=endpoint)
+        profile = _extract_flag_value(args, "--profile", "")
+        path = configure_openai(model=model, api_key_env=api_key_env, endpoint=endpoint, profile=profile or None)
         print(f"Configured OpenAI-compatible AI in {path}")
         print(f"provider=openai model={model} endpoint={endpoint} api_key_env={api_key_env}")
-        print("Next:")
-        for line in env_var_hint(api_key_env):
-            print(f"  {line}")
+        print(f"active_profile={active_ai_profile_name() or '<none>'}")
+        _print_env_next(api_key_env)
         return 0
 
     if args[0] in {"use-gemini", "gemini"}:
-        model_args = _without_flags(args[1:], {"--api-key-env"})
+        model_args = _without_flags(args[1:], {"--api-key-env", "--profile"})
         model = model_args[0] if model_args else "gemini-2.5-flash"
         api_key_env = _extract_flag_value(args, "--api-key-env", "GEMINI_API_KEY")
-        path = configure_gemini(model=model, api_key_env=api_key_env)
+        profile = _extract_flag_value(args, "--profile", "")
+        path = configure_gemini(model=model, api_key_env=api_key_env, profile=profile or None)
         print(f"Configured Gemini AI in {path}")
         print(f"provider=gemini model={model} api_key_env={api_key_env}")
-        print("Next:")
-        for line in env_var_hint(api_key_env):
-            print(f"  {line}")
+        print(f"active_profile={active_ai_profile_name() or '<none>'}")
+        _print_env_next(api_key_env)
         return 0
 
     if args[0] == "set-gemini-key-env" and len(args) >= 2:
@@ -369,10 +567,13 @@ def _handle_config_ai(args: list[str]) -> int:
         return 0
 
     if args[0] in {"use-custom", "custom-command"} and len(args) >= 2:
-        command = _join(args[1:])
-        path = configure_custom_command(command)
+        command_args = _without_flags(args[1:], {"--profile"})
+        command = _join(command_args)
+        profile = _extract_flag_value(args, "--profile", "")
+        path = configure_custom_command(command, profile=profile or None)
         print(f"Configured custom AI command in {path}")
         print(f"custom_command={command}")
+        print(f"active_profile={active_ai_profile_name() or '<none>'}")
         return 0
 
     if args[0] in {"disable", "off", "none"}:
@@ -402,8 +603,7 @@ def _handle_config_ai(args: list[str]) -> int:
         print(f"Updated {path}: ai.api_key_env={args[1]}")
         return 0
 
-    print("Unknown AI config command.", file=sys.stderr)
-    return 1
+    return _print_unknown_ai_command(args[0])
 
 
 def _handle_config(args: list[str]) -> int:
@@ -442,6 +642,7 @@ def _handle_rules(args: list[str]) -> int:
 
 
 def _handle_doctor() -> int:
+    provider = load_config()["ai"].get("provider", "none")
     print("CAIROS Doctor")
     print(f"version: {__version__}")
     print(f"platform: {platform.system() or 'unknown'}")
@@ -453,8 +654,22 @@ def _handle_doctor() -> int:
     print(f"command path: {shutil.which('cairos') or '<not found on PATH>'}")
     print(ai_status())
     print("AI hints:")
-    print("- Run `cairos config ai test` to verify the configured backend.")
-    print("- Run `cairos config ai list-models` to inspect Gemini model availability.")
+    if provider == "gemini":
+        print("- Run `cairos config ai test` to verify the Gemini backend.")
+        print("- Run `cairos config ai list-models` to inspect Gemini model availability.")
+        print("- Run `cairos config ai profiles` to see saved profiles.")
+    elif provider in {"openai", "openai-compatible"}:
+        print("- Run `cairos config ai test` to verify the OpenAI-compatible backend.")
+        print("- Run `cairos config ai profiles` to see saved profiles.")
+    elif provider == "ollama":
+        print("- Make sure Ollama is running: ollama serve")
+        print("- Run `cairos config ai test`.")
+        print("- Run `cairos config ai profiles` to see saved profiles.")
+    elif provider == "none":
+        print("- Configure AI with `cairos config ai list-providers`, or keep using offline templates.")
+    else:
+        print("- Run `cairos config ai test` to verify the configured backend.")
+        print("- Run `cairos config ai profiles` to see saved profiles.")
     print("Context:")
     print(context_summary())
     git = check_command("git --version")
@@ -626,9 +841,9 @@ def _handle_quicksetup() -> int:
     print("   no AI:")
     print("     cairos config ai disable")
     print("   Gemini:")
-    for line in env_var_hint("GEMINI_API_KEY"):
+    for line in env_var_setup_hint("GEMINI_API_KEY").splitlines():
         print(f"     {line}")
-    print("     cairos config ai use-gemini gemini-2.5-flash")
+    print("     cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash")
     print("   Ollama:")
     print("     ollama pull llama3.1")
     print("     cairos config ai use-ollama llama3.1")
@@ -888,6 +1103,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_explain(rest)
     if command == "context":
         return _handle_context(rest)
+    if command == "ai":
+        return _handle_config_ai(rest)
     if command == "find-dir":
         return _handle_find_dir(rest)
     if command == "config":

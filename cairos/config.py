@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "custom_command": "",
         "timeout_seconds": 60,
     },
+    "ai_profiles": {},
+    "active_ai_profile": "",
     "behavior": {
         "require_confirmation": True,
         "send_context_to_ai": True,
@@ -54,33 +57,90 @@ def config_path() -> Path:
 
 def shell_guess(system: str | None = None, environ: dict[str, str] | None = None) -> str:
     """Return a friendly shell guess for setup hints."""
+    return detect_shell_kind(system=system, environ=environ)
+
+
+def detect_shell_kind(system: str | None = None, environ: dict[str, str] | None = None) -> str:
+    """Return ``cmd``, ``powershell``, ``posix`` or ``unknown``."""
     env = os.environ if environ is None else environ
+    override = env.get("CAIROS_SHELL", "").lower()
+    if override in {"cmd", "cmd.exe"}:
+        return "cmd"
+    if override in {"powershell", "pwsh", "ps"}:
+        return "powershell"
+    if override in {"bash", "zsh", "fish", "sh", "posix"}:
+        return "posix"
+
     system_name = system or platform.system()
     if system_name == "Windows":
         comspec = env.get("ComSpec", "").lower()
-        if env.get("PSModulePath"):
-            return "powershell"
         if "cmd.exe" in comspec:
             return "cmd"
-        return "cmd/powershell"
+        if env.get("TERM_PROGRAM", "").lower() in {"vscode", "windows terminal"} and env.get("PSModulePath"):
+            return "unknown"
+        if env.get("PWSH") or env.get("POWERSHELL_DISTRIBUTION_CHANNEL"):
+            return "powershell"
+        return "unknown"
     shell = Path(env.get("SHELL", "")).name.lower()
-    return shell or "posix"
+    if shell in {"bash", "zsh", "fish", "sh"}:
+        return "posix"
+    return "posix" if shell else "unknown"
 
 
 def env_var_hint(name: str, shell: str | None = None) -> list[str]:
     """Return shell-specific commands for setting an environment variable."""
-    guessed = (shell or shell_guess()).lower()
-    if "powershell" in guessed or guessed == "pwsh":
+    guessed = (shell or detect_shell_kind()).lower()
+    if guessed == "powershell":
         return [
             f'$env:{name}="your-key"',
             f'[Environment]::SetEnvironmentVariable("{name}", "your-key", "User")',
         ]
-    if guessed == "cmd" or "cmd.exe" in guessed:
+    if guessed == "cmd":
         return [
             f"set {name}=your-key",
             f'setx {name} "your-key"',
         ]
+    if guessed == "unknown-windows" or (guessed == "unknown" and platform.system() == "Windows"):
+        return [
+            f"cmd.exe: set {name}=your-key",
+            f'cmd.exe: setx {name} "your-key"',
+            f'PowerShell: $env:{name}="your-key"',
+            f'PowerShell: [Environment]::SetEnvironmentVariable("{name}", "your-key", "User")',
+        ]
     return [f'export {name}="your-key"']
+
+
+def env_var_setup_hint(name: str, shell_kind: str | None = None) -> str:
+    """Return a user-facing shell-specific environment setup block."""
+    guessed = (shell_kind or detect_shell_kind()).lower()
+    if guessed == "cmd":
+        return (
+            f"For this cmd.exe session:\n"
+            f"  set {name}=your-key\n\n"
+            f"Persist for future cmd.exe sessions:\n"
+            f"  setx {name} \"your-key\""
+        )
+    if guessed == "powershell":
+        return (
+            f"For this PowerShell session:\n"
+            f"  $env:{name}=\"your-key\"\n\n"
+            f"Persist for future PowerShell sessions:\n"
+            f"  [Environment]::SetEnvironmentVariable(\"{name}\", \"your-key\", \"User\")"
+        )
+    if guessed == "unknown-windows" or (guessed == "unknown" and platform.system() == "Windows"):
+        return (
+            f"For cmd.exe:\n"
+            f"  set {name}=your-key\n"
+            f"  setx {name} \"your-key\"\n\n"
+            f"For PowerShell:\n"
+            f"  $env:{name}=\"your-key\"\n"
+            f"  [Environment]::SetEnvironmentVariable(\"{name}\", \"your-key\", \"User\")"
+        )
+    return (
+        f"For this shell session:\n"
+        f"  export {name}=\"your-key\"\n\n"
+        "Persist by adding it to your shell profile or a sourced secrets file."
+    )
 
 
 def _clone_default() -> dict[str, Any]:
@@ -138,31 +198,121 @@ def set_config_value(key_path: str, raw_value: str) -> Path:
     return save_config(config)
 
 
-def configure_ollama(model: str = "llama3.1", endpoint: str = "http://localhost:11434") -> Path:
+def _sanitize_profile_name(name: str) -> str:
+    clean = re.sub(r"[^A-Za-z0-9_.-]+", "-", name.strip()).strip("-._")
+    return clean or "default"
+
+
+def _profile_default_name(provider: str, model: str = "") -> str:
+    if provider == "custom-command":
+        return "custom-command"
+    suffix = re.sub(r"[^A-Za-z0-9_.-]+", "-", model or provider).strip("-")
+    return _sanitize_profile_name(f"{provider}-{suffix}")
+
+
+def _profile_from_ai(ai: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "provider": ai.get("provider", "none"),
+        "model": ai.get("model", ""),
+        "endpoint": ai.get("endpoint", ""),
+        "api_key_env": ai.get("api_key_env", ""),
+        "custom_command": ai.get("custom_command", ""),
+        "timeout_seconds": ai.get("timeout_seconds", 60),
+    }
+
+
+def _set_active_profile(config: dict[str, Any], name: str, profile: dict[str, Any]) -> None:
+    safe_name = _sanitize_profile_name(name)
+    config.setdefault("ai_profiles", {})[safe_name] = _profile_from_ai(profile)
+    config["active_ai_profile"] = safe_name
+    config["ai"].update(config["ai_profiles"][safe_name])
+
+
+def save_current_ai_profile(name: str) -> Path:
+    config = load_config()
+    safe_name = _sanitize_profile_name(name)
+    config.setdefault("ai_profiles", {})[safe_name] = _profile_from_ai(config["ai"])
+    config["active_ai_profile"] = safe_name
+    return save_config(config)
+
+
+def activate_ai_profile(name: str) -> Path:
+    config = load_config()
+    safe_name = _sanitize_profile_name(name)
+    profiles = config.setdefault("ai_profiles", {})
+    if safe_name not in profiles:
+        raise KeyError(safe_name)
+    config["active_ai_profile"] = safe_name
+    config["ai"].update(profiles[safe_name])
+    return save_config(config)
+
+
+def delete_ai_profile(name: str, force: bool = False) -> Path:
+    config = load_config()
+    safe_name = _sanitize_profile_name(name)
+    active = config.get("active_ai_profile", "")
+    if safe_name == active and not force:
+        raise ValueError("active")
+    profiles = config.setdefault("ai_profiles", {})
+    if safe_name not in profiles:
+        raise KeyError(safe_name)
+    profiles.pop(safe_name)
+    if safe_name == active:
+        config["active_ai_profile"] = ""
+    return save_config(config)
+
+
+def rename_ai_profile(old: str, new: str) -> Path:
+    config = load_config()
+    old_name = _sanitize_profile_name(old)
+    new_name = _sanitize_profile_name(new)
+    profiles = config.setdefault("ai_profiles", {})
+    if old_name not in profiles:
+        raise KeyError(old_name)
+    profiles[new_name] = profiles.pop(old_name)
+    if config.get("active_ai_profile") == old_name:
+        config["active_ai_profile"] = new_name
+    return save_config(config)
+
+
+def ai_profiles() -> dict[str, dict[str, Any]]:
+    config = load_config()
+    return config.setdefault("ai_profiles", {})
+
+
+def active_ai_profile_name() -> str:
+    return str(load_config().get("active_ai_profile", ""))
+
+
+def configure_ollama(model: str = "llama3.1", endpoint: str = "http://localhost:11434", profile: str | None = None) -> Path:
     """Configure CAIROS to use a local Ollama model."""
     config = load_config()
-    config["ai"].update({"provider": "ollama", "model": model, "endpoint": endpoint})
+    config["ai"].update({"provider": "ollama", "model": model, "endpoint": endpoint, "api_key_env": "", "custom_command": ""})
+    _set_active_profile(config, profile or _profile_default_name("ollama", model), config["ai"])
     return save_config(config)
 
 
-def configure_openai(model: str = "gpt-4.1-mini", api_key_env: str = "OPENAI_API_KEY", endpoint: str = "https://api.openai.com/v1") -> Path:
+def configure_openai(model: str = "gpt-4.1-mini", api_key_env: str = "OPENAI_API_KEY", endpoint: str = "https://api.openai.com/v1", profile: str | None = None) -> Path:
     """Configure an OpenAI-compatible chat completions endpoint."""
     config = load_config()
-    config["ai"].update({"provider": "openai", "model": model, "endpoint": endpoint, "api_key_env": api_key_env})
+    config["ai"].update({"provider": "openai", "model": model, "endpoint": endpoint, "api_key_env": api_key_env, "custom_command": ""})
+    _set_active_profile(config, profile or _profile_default_name("openai", model), config["ai"])
     return save_config(config)
 
 
-def configure_gemini(model: str = "gemini-2.5-flash", api_key_env: str = "GEMINI_API_KEY") -> Path:
+def configure_gemini(model: str = "gemini-2.5-flash", api_key_env: str = "GEMINI_API_KEY", profile: str | None = None) -> Path:
     """Configure CAIROS to use Google's Gemini API without storing the key."""
     config = load_config()
-    config["ai"].update({"provider": "gemini", "model": model, "endpoint": "https://generativelanguage.googleapis.com/v1beta", "api_key_env": api_key_env})
+    config["ai"].update({"provider": "gemini", "model": model, "endpoint": "https://generativelanguage.googleapis.com/v1beta", "api_key_env": api_key_env, "custom_command": ""})
+    _set_active_profile(config, profile or _profile_default_name("gemini", model), config["ai"])
     return save_config(config)
 
 
-def configure_custom_command(command: str) -> Path:
+def configure_custom_command(command: str, profile: str | None = None) -> Path:
     """Configure a local command that reads JSON from stdin and writes plan JSON."""
     config = load_config()
-    config["ai"].update({"provider": "custom-command", "custom_command": command})
+    config["ai"].update({"provider": "custom-command", "model": "", "endpoint": "", "api_key_env": "", "custom_command": command})
+    _set_active_profile(config, profile or "custom-command", config["ai"])
     return save_config(config)
 
 
@@ -170,6 +320,7 @@ def disable_ai() -> Path:
     """Disable AI fallback and use deterministic templates only."""
     config = load_config()
     config["ai"]["provider"] = "none"
+    config["active_ai_profile"] = ""
     return save_config(config)
 
 
@@ -184,6 +335,9 @@ def ai_status() -> str:
     ai = config["ai"]
     provider = ai.get("provider", "none")
     lines = ["AI configuration:", f"provider: {provider}"]
+    active_profile = config.get("active_ai_profile", "")
+    if active_profile:
+        lines.append(f"active_profile: {active_profile}")
     if provider == "none":
         openai_hint = " && ".join(env_var_hint("OPENAI_API_KEY"))
         lines.extend([

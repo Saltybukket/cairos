@@ -261,21 +261,46 @@ Use Ollama:
 
 ```bash
 ollama pull llama3.1
-cairos config ai use-ollama llama3.1
+cairos config ai use-ollama llama3.1 --profile ollama-local
 ```
 
-Use Gemini:
+Use Gemini on bash/zsh/WSL:
 
 ```bash
 export GEMINI_API_KEY="your-key"
-cairos config ai use-gemini gemini-2.5-flash
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
+```
+
+Use Gemini on PowerShell:
+
+```powershell
+$env:GEMINI_API_KEY="your-key"
+[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-key", "User")
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
+```
+
+Use Gemini on cmd.exe:
+
+```cmd
+set GEMINI_API_KEY=your-key
+setx GEMINI_API_KEY "your-key"
+cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 ```
 
 Use OpenAI-compatible APIs:
 
 ```bash
 export OPENAI_API_KEY="your-key"
-cairos config ai use-openai gpt-4.1-mini
+cairos config ai use-openai gpt-4.1-mini --profile openai-mini
+```
+
+Save and switch profiles:
+
+```bash
+cairos config ai profiles
+cairos config ai switch
+cairos config ai use-profile openai-mini
+cairos config ai save-profile saved-current
 ```
 
 Check status:
@@ -286,7 +311,7 @@ cairos config ai test
 ```
 
 CAIROS reports whether an API key environment variable exists, but never prints
-the key value.
+the key value. Profiles store only environment variable names, never raw keys.
 
 ## Shell Helpers
 

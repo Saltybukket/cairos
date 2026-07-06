@@ -1309,5 +1309,62 @@
     "expected_contains": ["TU-Graz"],
     "expected_stderr": "",
     "expected_exit": 0
+  },
+  {
+    "name": "AI config help prints useful commands",
+    "command": ["python3", "-m", "cairos.cli", "config", "ai", "--help"],
+    "expected_contains": ["CAIROS AI configuration", "cairos config ai profiles", "cairos config ai list-providers", "Never store raw API keys"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "AI list providers prints setup examples",
+    "command": ["python3", "-m", "cairos.cli", "config", "ai", "list-providers"],
+    "expected_contains": ["Supported AI providers:", "- gemini", "- openai", "use-gemini gemini-2.5-flash --profile gemini-flash"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "AI profiles lifecycle",
+    "command": ["python3", "-c", "from cairos.cli import main; main(['config','ai','use-gemini','gemini-2.5-flash','--profile','gemini-flash']); main(['config','ai','use-openai','gpt-4.1-mini','--profile','openai-mini']); main(['config','ai','use-ollama','llama3.1','--profile','ollama-local']); main(['config','ai','profiles']); main(['config','ai','use-profile','gemini-flash']); main(['config','ai','show-profile','gemini-flash']); main(['config','ai','save-profile','saved-current']); main(['config','ai','use-profile','openai-mini']); main(['config','ai','delete-profile','saved-current'])"],
+    "expected_contains": ["Configured Gemini AI", "active_profile=gemini-flash", "Configured OpenAI-compatible AI", "active_profile=openai-mini", "Configured local Ollama AI", "active_profile=ollama-local", "AI Profiles", "gemini-flash", "openai-mini", "ollama-local", "Activated AI profile: gemini-flash", "Saved current AI config as profile: saved-current", "Deleted AI profile: saved-current"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "AI switch noninteractive prints fallback",
+    "command": ["python3", "-c", "from cairos.cli import main; main(['config','ai','use-gemini','gemini-2.5-flash','--profile','gemini-flash']); main(['config','ai','switch'])"],
+    "expected_contains": ["Choose AI profile:", "[1]", "Non-interactive shell. Use:", "cairos config ai use-profile <name>"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "AI shorthand alias works",
+    "command": ["python3", "-m", "cairos.cli", "ai", "list-providers"],
+    "expected_contains": ["Supported AI providers:", "- ollama", "- custom-command"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "AI pasted command typo suggests help",
+    "command": ["python3", "-m", "cairos.cli", "config", "ai", "list-providerscairos", "config", "ai", "status"],
+    "expected_stderr_contains": ["Unknown AI config command: list-providerscairos", "It looks like two commands may have been pasted together.", "cairos config ai --help"],
+    "expected_exit": 1
+  },
+  {
+    "name": "Shell override cmd shows cmd env syntax",
+    "command": ["python3", "-m", "cairos.cli", "config", "ai", "use-openai", "gpt-4.1-mini", "--profile", "openai-mini"],
+    "env": {"CAIROS_SHELL": "cmd"},
+    "expected_contains": ["For this cmd.exe session:", "set OPENAI_API_KEY=your-key", "setx OPENAI_API_KEY \"your-key\""],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Shell override powershell shows PowerShell env syntax",
+    "command": ["python3", "-m", "cairos.cli", "config", "ai", "use-openai", "gpt-4.1-mini", "--profile", "openai-mini"],
+    "env": {"CAIROS_SHELL": "powershell"},
+    "expected_contains": ["For this PowerShell session:", "$env:OPENAI_API_KEY=\"your-key\"", "[Environment]::SetEnvironmentVariable(\"OPENAI_API_KEY\", \"your-key\", \"User\")"],
+    "expected_stderr": "",
+    "expected_exit": 0
   }
 ]
