@@ -205,6 +205,207 @@ def _cpp_header_plan(request: str) -> Plan:
     )
 
 
+def _cpp_source_plan(request: str) -> Plan:
+    """Create a matching C++ source file for a class."""
+    rules = load_rules()["cpp"]
+    class_name = _extract_class_name(request)
+    source_dir = rules.get("source_dir", "src")
+    extension = rules.get("source_extension", ".cpp")
+    header_ext = rules.get("header_extension", ".hpp")
+    path = _extract_path_after_keywords(request, ["at", "in", "into", "nach", "unter"], f"{source_dir}/{class_name}{extension}")
+    content = f'#include "{class_name}{header_ext}"\n\n{class_name}::{class_name}() = default;\n{class_name}::~{class_name}() = default;\n'
+    return Plan(
+        summary=f"Create C++ source for class {class_name}.",
+        steps=[
+            CommandStep(kind="mkdir", path=str(Path(path).parent), description="Create source parent directory.", changes_files=True),
+            CommandStep(kind="write_file", path=path, content=content, description=f"Write source file for {class_name}.", changes_files=True),
+        ],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=path)],
+        source="template:cpp-source",
+    )
+
+
+def _cmake_plan(_: str) -> Plan:
+    """Create a generic CMakeLists.txt for a small C++ project."""
+    rules = load_rules()["cpp"]
+    name = Path.cwd().name.replace("-", "_")
+    content = f"""cmake_minimum_required(VERSION 3.16)
+project({name})
+
+set(CMAKE_CXX_STANDARD {rules.get('standard', '17')})
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+add_executable(${{PROJECT_NAME}} ${{SOURCES}})
+target_include_directories(${{PROJECT_NAME}} PRIVATE include)
+"""
+    return Plan(
+        summary="Create CMakeLists.txt.",
+        steps=[CommandStep(kind="write_file", path="CMakeLists.txt", content=content, description="Write a small C++ CMake file.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target="CMakeLists.txt")],
+        source="template:cmake",
+    )
+
+
+def _node_project_plan(request: str, vite: bool = False) -> Plan:
+    name = _extract_name(request, default="app")
+    if vite:
+        return Plan(
+            summary=f"Create a Vite project named {name}.",
+            steps=[CommandStep(kind="command", command=f"npm create vite@latest {name}", description="Run the official Vite project generator.", changes_files=True, risk="medium")],
+            risk="medium",
+            notes=["Package generation requires confirmation before npm runs."],
+            source="template:vite-project",
+        )
+    package_json = f"""{{ 
+  "name": "{name}",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {{
+    "test": "node --test"
+  }}
+}}
+"""
+    return Plan(
+        summary=f"Create a Node project named {name}.",
+        steps=[
+            CommandStep(kind="mkdir", path=name, description="Create project directory.", changes_files=True),
+            CommandStep(kind="write_file", path=f"{name}/package.json", content=package_json, description="Create package.json.", changes_files=True),
+            CommandStep(kind="write_file", path=f"{name}/README.md", content=f"# {name}\n\nGenerated with CAIROS.\n", description="Create README.", changes_files=True),
+        ],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=f"{name}/package.json")],
+        source="template:node-project",
+    )
+
+
+def _package_json_plan(_: str) -> Plan:
+    name = Path.cwd().name.replace("_", "-")
+    content = f"""{{ 
+  "name": "{name}",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {{
+    "test": "node --test"
+  }}
+}}
+"""
+    return Plan(
+        summary="Create package.json.",
+        steps=[CommandStep(kind="write_file", path="package.json", content=content, description="Create a minimal package.json.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target="package.json")],
+        source="template:package-json",
+    )
+
+
+def _rust_project_plan(request: str) -> Plan:
+    name = _extract_name(request, default="tool")
+    return Plan(
+        summary=f"Create a Rust project named {name}.",
+        steps=[CommandStep(kind="command", command=f"cargo new {name}", description="Run cargo new.", changes_files=True, risk="medium")],
+        risk="medium",
+        source="template:rust-project",
+    )
+
+
+def _c_project_plan(request: str) -> Plan:
+    name = _extract_name(request, default="embedded")
+    main_c = '#include <stdio.h>\n\nint main(void) {\n    puts("Hello from CAIROS!");\n    return 0;\n}\n'
+    makefile = f"""CC ?= cc
+CFLAGS ?= -Wall -Wextra -std=c11
+
+.PHONY: all clean test
+
+all: {name}
+
+{name}: src/main.c
+\t$(CC) $(CFLAGS) -o $@ $<
+
+test: all
+\t./{name}
+
+clean:
+\trm -f {name}
+"""
+    return Plan(
+        summary=f"Create a C project named {name}.",
+        steps=[
+            CommandStep(kind="mkdir", path=f"{name}/src", description="Create source directory.", changes_files=True),
+            CommandStep(kind="write_file", path=f"{name}/src/main.c", content=main_c, description="Create main.c.", changes_files=True),
+            CommandStep(kind="write_file", path=f"{name}/Makefile", content=makefile, description="Create Makefile.", changes_files=True),
+            CommandStep(kind="write_file", path=f"{name}/README.md", content=f"# {name}\n\nGenerated with CAIROS.\n", description="Create README.", changes_files=True),
+        ],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=f"{name}/src/main.c")],
+        source="template:c-project",
+    )
+
+
+def _requirements_plan(_: str) -> Plan:
+    return Plan(
+        summary="Create requirements.txt.",
+        steps=[CommandStep(kind="write_file", path="requirements.txt", content="", description="Create an empty requirements.txt.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target="requirements.txt")],
+        source="template:requirements",
+    )
+
+
+def _pyproject_plan(_: str) -> Plan:
+    name = Path.cwd().name.replace("_", "-")
+    content = f"""[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "{name}"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = []
+"""
+    return Plan(
+        summary="Create pyproject.toml.",
+        steps=[CommandStep(kind="write_file", path="pyproject.toml", content=content, description="Create a minimal pyproject.toml.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target="pyproject.toml")],
+        source="template:pyproject",
+    )
+
+
+def _append_requirement_plan(package: str) -> Plan:
+    return Plan(
+        summary=f"Add {package} to requirements.txt.",
+        steps=[CommandStep(kind="append_file", path="requirements.txt", content=f"{package}\n", description=f"Append {package} dependency.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target="requirements.txt")],
+        source="template:add-python-dependency",
+    )
+
+
+def _makefile_plan(_: str) -> Plan:
+    content = """.PHONY: test build clean
+
+test:
+\tpython -m pytest
+
+build:
+\tpython -m compileall -q .
+
+clean:
+\trm -rf build dist .pytest_cache
+"""
+    return Plan(
+        summary="Create Makefile.",
+        steps=[CommandStep(kind="write_file", path="Makefile", content=content, description="Create standard test/build/clean targets.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target="Makefile")],
+        source="template:makefile",
+    )
+
+
 def _create_folder_plan(request: str) -> Plan:
     name = _extract_name(request, default="new_folder")
     return Plan(
@@ -271,6 +472,16 @@ def _git_finish_plan(_: str) -> Plan:
     )
 
 
+def _simple_command_plan(summary: str, command: str, source: str, risk: str = "low", changes: bool = False, confirm: bool | None = None) -> Plan:
+    return Plan(
+        summary=summary,
+        steps=[CommandStep(kind="command", command=command, description=summary, changes_files=changes, risk=risk)],
+        risk=risk,  # type: ignore[arg-type]
+        requires_confirmation=(changes if confirm is None else confirm),
+        source=source,
+    )
+
+
 def _run_tests_plan(_: str) -> Plan:
     if Path("Makefile").exists():
         command = "make test"
@@ -300,8 +511,48 @@ def plan_from_template(request: str) -> Plan | None:
     if has_concept(tokens, "cpp") and has_concept(tokens, "project") and has_concept(tokens, "make"):
         return _cpp_project_plan(request)
 
-    if has_concept(tokens, "header") and (has_concept(tokens, "cpp") or has_concept(tokens, "class") or "hpp" in text):
+    if has_concept(tokens, "c") and has_concept(tokens, "project") and has_concept(tokens, "make"):
+        return _c_project_plan(request)
+
+    if has_concept(tokens, "header") and (has_concept(tokens, "cpp") or has_concept(tokens, "class") or has_concept(tokens, "make") or "hpp" in text):
         return _cpp_header_plan(request)
+
+    if has_concept(tokens, "cpp") and has_concept(tokens, "class") and has_concept(tokens, "make"):
+        return _cpp_header_plan(request)
+
+    if has_concept(tokens, "source") and (has_concept(tokens, "cpp") or has_concept(tokens, "class")):
+        return _cpp_source_plan(request)
+
+    if has_concept(tokens, "cmake") and has_concept(tokens, "file"):
+        return _cmake_plan(request)
+
+    if has_concept(tokens, "node") and has_concept(tokens, "project") and has_concept(tokens, "make"):
+        return _node_project_plan(request)
+
+    if has_concept(tokens, "package") and "json" in tokens and has_concept(tokens, "make"):
+        return _package_json_plan(request)
+
+    if "vite" in tokens and has_concept(tokens, "project"):
+        return _node_project_plan(request, vite=True)
+
+    if has_concept(tokens, "rust") and (has_concept(tokens, "project") or "cargo" in tokens) and has_concept(tokens, "make"):
+        return _rust_project_plan(request)
+
+    if has_concept(tokens, "requirements") and has_concept(tokens, "make"):
+        return _requirements_plan(request)
+
+    if "pyproject" in text and has_concept(tokens, "make"):
+        return _pyproject_plan(request)
+
+    if has_concept(tokens, "makefile") and has_concept(tokens, "make"):
+        return _makefile_plan(request)
+
+    if "pytest" in tokens and "add" in tokens:
+        return _append_requirement_plan("pytest")
+    if "typer" in tokens and "add" in tokens:
+        return _append_requirement_plan("typer")
+    if "rich" in tokens and "add" in tokens:
+        return _append_requirement_plan("rich")
 
     if has_concept(tokens, "venv") and has_concept(tokens, "make"):
         return Plan(
@@ -368,6 +619,36 @@ def plan_from_template(request: str) -> Plan | None:
             requires_confirmation=False,
             source="template:git-fetch",
         )
+
+    if has_concept(tokens, "git") and "recent" in tokens and "commits" in tokens:
+        return _simple_command_plan("Show recent git commits.", "git log --oneline --decorate --max-count=12", "template:git-log", confirm=False)
+
+    if has_concept(tokens, "git") and "unstage" in tokens:
+        return _simple_command_plan("Unstage all staged changes.", "git restore --staged .", "template:git-unstage", risk="medium", changes=True)
+
+    if "undo" in tokens and "commit" in tokens:
+        return _simple_command_plan("Undo the last commit while keeping changes.", "git reset --soft HEAD~1", "template:git-undo-soft", risk="medium", changes=True)
+
+    if has_concept(tokens, "node") and "install" in tokens:
+        return _simple_command_plan("Install Node dependencies with npm.", "npm install", "template:npm-install", risk="medium", changes=True)
+
+    if has_concept(tokens, "node") and has_concept(tokens, "test"):
+        return _simple_command_plan("Run npm tests.", "npm test", "template:npm-test", confirm=False)
+
+    if "cargo" in tokens and has_concept(tokens, "test"):
+        return _simple_command_plan("Run cargo tests.", "cargo test", "template:cargo-test", confirm=False)
+
+    if has_concept(tokens, "build"):
+        if Path("package.json").exists():
+            return _simple_command_plan("Build the Node project.", "npm run build", "template:build", confirm=False)
+        if Path("Cargo.toml").exists():
+            return _simple_command_plan("Build the Rust project.", "cargo build", "template:build", confirm=False)
+        if Path("CMakeLists.txt").exists():
+            return _simple_command_plan("Build the CMake project.", "cmake --build build", "template:build", confirm=False)
+        return _simple_command_plan("Compile Python files.", "python -m compileall -q .", "template:build", confirm=False)
+
+    if has_concept(tokens, "clean") and has_concept(tokens, "build"):
+        return _simple_command_plan("Clean generated build folders.", "rm -rf build dist", "template:clean-build", risk="medium", changes=True)
 
     if has_concept(tokens, "test") and ("run" in tokens or "starte" in text or "mach" in text or "mache" in text or "macke" in text):
         return _run_tests_plan(request)

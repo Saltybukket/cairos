@@ -8,8 +8,12 @@ CAIROS is a context-aware command assistant that lives inside your normal shell.
 cairos macke python projekt demo mit venv git pytest
 cairos create cpp header file Player
 cairos make folder docs
+cairos --dry-run create python project demo
+cairos preview create cpp header Player
+cairos diff create cpp header Player
 cairos explain git reset --soft HEAD~1
 cairos config ai use-ollama llama3.1
+cairos config ai use-gemini gemini-1.5-flash
 ```
 
 CAIROS first tries deterministic templates with typo-tolerant matching. Only when it cannot solve a request locally does it fall back to a configured AI backend.
@@ -56,3 +60,10 @@ cairos config ai use-openai gpt-4.1-mini
 ```
 
 See [`DOCUMENTATION.md`](DOCUMENTATION.md) for full commands, settings and behavior.
+
+Additional references:
+
+- [`TEMPLATES.md`](TEMPLATES.md) lists deterministic tasks.
+- [`SAFETY.md`](SAFETY.md) explains risk levels and blocked commands.
+- [`AI_SETUP.md`](AI_SETUP.md) covers Ollama, Gemini, OpenAI-compatible APIs and custom commands.
+- [`DEPENDENCIES.md`](DEPENDENCIES.md) lists runtime and optional dependencies.

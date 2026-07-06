@@ -26,6 +26,14 @@ CONCEPT_ALIASES: dict[str, set[str]] = {
     "file": {"file", "datei", "touch"},
     "python": {"python", "py"},
     "cpp": {"cpp", "c++", "cplusplus", "cmake"},
+    "c": {"c"},
+    "node": {"node", "npm", "javascript", "js", "web"},
+    "rust": {"rust", "cargo"},
+    "build": {"build", "baue", "compile", "kompiliere"},
+    "makefile": {"makefile"},
+    "package": {"package", "paket"},
+    "requirements": {"requirements", "requirements.txt"},
+    "source": {"source", "src", "quelle"},
     "project": {"project", "projekt", "repo", "repository"},
     "header": {"header", "hpp", "h", "include"},
     "class": {"class", "klasse"},
@@ -46,7 +54,7 @@ CONCEPT_ALIASES: dict[str, set[str]] = {
 }
 
 IGNORED_NAME_WORDS = set().union(*CONCEPT_ALIASES.values()) | {
-    "with", "and", "und", "a", "an", "ein", "eine", "einen", "einem", "the", "for", "für", "fuer",
+    "with", "mit", "and", "und", "a", "an", "ein", "eine", "einen", "einem", "the", "for", "für", "fuer",
     "called", "named", "namens", "current", "aktuell", "aktuelle", "hier", "here", "in", "into", "at",
     "local", "lokal", "origin", "remote", "to", "zu", "auf", "fertig", "prepare", "ready",
 }

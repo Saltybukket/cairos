@@ -98,9 +98,14 @@ cairos context [--json]
 cairos config ...
 cairos rules ...
 cairos doctor
+cairos history
+cairos --dry-run <task>
+cairos preview <task>
+cairos diff <task>
 ```
 
-Everything else is interpreted as a normal task.
+Everything else is interpreted as a normal task and prints a plan. Use
+`cairos run <task>` when you want CAIROS to execute after confirmation.
 
 ---
 
@@ -126,17 +131,28 @@ Notes
 
 `Source` tells you whether the plan came from a deterministic template or AI.
 
+Trust-focused review commands:
+
+```bash
+cairos --dry-run create python project demo
+cairos preview create cpp header Player
+cairos diff create cpp header Player
+```
+
+`--dry-run` never executes. `preview` lists affected paths. `diff` shows unified
+diffs for file writes where possible.
+
 ---
 
 ## 6. Running tasks
 
-Direct task usage:
+Direct task usage prints the plan only:
 
 ```bash
 cairos make folder docs
 ```
 
-or explicit run mode:
+Use explicit run mode to execute:
 
 ```bash
 cairos run make folder docs
@@ -594,6 +610,8 @@ Shows:
 
 ```text
 CAIROS version
+Python version
+executable path
 config path
 AI status
 current context
@@ -628,3 +646,70 @@ reports/testreport.html
 ```
 
 The test suite includes typo-tolerant templates, AI config commands, safety edge cases and dangerous-command classification.
+
+---
+
+## 21. History
+
+History path:
+
+```text
+~/.local/state/cairos/history.jsonl
+```
+
+Commands:
+
+```bash
+cairos history
+cairos history last
+cairos history clear
+```
+
+History stores compact metadata only. It does not store file contents, command
+output or raw API keys.
+
+---
+
+## 22. AI setup
+
+Ollama:
+
+```bash
+cairos config ai use-ollama llama3.1
+```
+
+Gemini:
+
+```bash
+export GEMINI_API_KEY="your-key"
+cairos config ai use-gemini gemini-1.5-flash
+```
+
+OpenAI-compatible:
+
+```bash
+export OPENAI_API_KEY="your-key"
+cairos config ai use-openai gpt-4.1-mini
+```
+
+Custom command:
+
+```bash
+cairos config ai use-custom python3 ~/my_cairos_planner.py
+```
+
+See `AI_SETUP.md` for details. CAIROS stores environment variable names, never
+raw keys.
+
+---
+
+## 23. Dependency and install files
+
+See:
+
+```text
+DEPENDENCIES.md
+install_dependencies.sh
+```
+
+The runtime uses Python 3.10+ and the standard library only.

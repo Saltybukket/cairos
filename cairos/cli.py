@@ -16,6 +16,7 @@ from .config import (
     ai_status,
     config_json,
     config_path,
+    configure_gemini,
     configure_custom_command,
     configure_ollama,
     configure_openai,
@@ -26,11 +27,13 @@ from .context import context_json, context_summary
 from .executor import execute_plan
 from .explain import explain_command
 from .formatter import format_plan
+from .history import append_history, clear_history, format_history
 from .planner import make_plan
+from .preview import diff_plan, preview_plan
 from .rules import init_global_rules, init_local_rules, rules_json, set_rule
 from .safety import check_command
 
-RESERVED = {"plan", "expand", "run", "check", "explain", "context", "config", "rules", "doctor", "help"}
+RESERVED = {"plan", "expand", "run", "check", "explain", "context", "config", "rules", "doctor", "history", "preview", "diff", "help"}
 
 USAGE = """CAIROS — Context-Aware Intelligent Runtime Operating Shell
 
@@ -39,6 +42,9 @@ Usage:
   cairos plan <task>
   cairos expand <task>
   cairos run <task> [--yes]
+  cairos --dry-run <task>
+  cairos preview <task>
+  cairos diff <task>
   cairos explain <shell command>
   cairos check <shell command>
   cairos context [--json]
@@ -47,6 +53,7 @@ Usage:
   cairos config ai status
   cairos config ai use-ollama [model] [--endpoint URL]
   cairos config ai use-openai [model] [--api-key-env ENV] [--endpoint URL]
+  cairos config ai use-gemini [model] [--api-key-env ENV]
   cairos config ai use-custom <command>
   cairos config ai disable
   cairos config set <key.path> <value>
@@ -54,6 +61,7 @@ Usage:
   cairos rules show
   cairos rules set <key.path> <value> [--global]
   cairos doctor
+  cairos history [last|clear]
 
 Examples:
   cairos macke python projekt testapp mit venv git pytest
@@ -124,7 +132,36 @@ def _handle_run(args: list[str]) -> int:
     if not filtered:
         print("Missing task.", file=sys.stderr)
         return 1
-    return execute_plan(make_plan(_join(filtered)), yes=yes)
+    request = _join(filtered)
+    plan = make_plan(request)
+    exit_code = execute_plan(plan, yes=yes)
+    append_history(request, plan.source, plan.risk, exit_code == 0, exit_code)
+    return exit_code
+
+
+def _handle_dry_run(args: list[str]) -> int:
+    if not args:
+        print("Missing task.", file=sys.stderr)
+        return 1
+    print(format_plan(make_plan(_join(args))))
+    print("Dry-run: no steps executed.")
+    return 0
+
+
+def _handle_preview(args: list[str]) -> int:
+    if not args:
+        print("Missing task.", file=sys.stderr)
+        return 1
+    print(preview_plan(make_plan(_join(args))))
+    return 0
+
+
+def _handle_diff(args: list[str]) -> int:
+    if not args:
+        print("Missing task.", file=sys.stderr)
+        return 1
+    print(diff_plan(make_plan(_join(args))))
+    return 0
 
 
 def _handle_check(args: list[str]) -> int:
@@ -179,6 +216,36 @@ def _handle_config_ai(args: list[str]) -> int:
         print(f"Configured OpenAI-compatible AI in {path}")
         print(f"provider=openai model={model} endpoint={endpoint} api_key_env={api_key_env}")
         print(f"Next: export {api_key_env}=<your-api-key>")
+        return 0
+
+    if args[0] in {"use-gemini", "gemini"}:
+        model_args = _without_flags(args[1:], {"--api-key-env"})
+        model = model_args[0] if model_args else "gemini-1.5-flash"
+        api_key_env = _extract_flag_value(args, "--api-key-env", "GEMINI_API_KEY")
+        path = configure_gemini(model=model, api_key_env=api_key_env)
+        print(f"Configured Gemini AI in {path}")
+        print(f"provider=gemini model={model} api_key_env={api_key_env}")
+        print(f"Next: export {api_key_env}=<your-api-key>")
+        return 0
+
+    if args[0] == "set-gemini-key-env" and len(args) >= 2:
+        path = set_config_value("ai.api_key_env", args[1])
+        print(f"Updated {path}: ai.api_key_env={args[1]}")
+        return 0
+
+    if args[0] == "set-ollama-endpoint" and len(args) >= 2:
+        path = set_config_value("ai.endpoint", args[1])
+        print(f"Updated {path}: ai.endpoint={args[1]}")
+        return 0
+
+    if args[0] == "set-openai-endpoint" and len(args) >= 2:
+        path = set_config_value("ai.endpoint", args[1])
+        print(f"Updated {path}: ai.endpoint={args[1]}")
+        return 0
+
+    if args[0] == "set-openai-key-env" and len(args) >= 2:
+        path = set_config_value("ai.api_key_env", args[1])
+        print(f"Updated {path}: ai.api_key_env={args[1]}")
         return 0
 
     if args[0] in {"use-custom", "custom-command"} and len(args) >= 2:
@@ -257,19 +324,38 @@ def _handle_rules(args: list[str]) -> int:
 def _handle_doctor() -> int:
     print("CAIROS Doctor")
     print(f"version: {__version__}")
+    print(f"python: {sys.version.split()[0]}")
+    print(f"executable: {sys.executable}")
     print(f"config path: {config_path()}")
     print(ai_status())
     print("Context:")
     print(context_summary())
+    git = check_command("git --version")
+    print(f"git safety check: {git.risk}")
+    return 0
+
+
+def _handle_history(args: list[str]) -> int:
+    if args and args[0] == "clear":
+        path = clear_history()
+        print(f"History cleared: {path}")
+        return 0
+    if args and args[0] == "last":
+        print(format_history(limit=1))
+        return 0
+    print(format_history(limit=25))
     return 0
 
 
 def _handle_free_task(args: list[str]) -> int:
-    plan = make_plan(_join(args))
+    request = _join(args)
+    plan = make_plan(request)
+    print(format_plan(plan))
     if not plan.steps:
-        print(format_plan(plan))
+        append_history(request, plan.source, plan.risk, False, 1)
         return 1
-    return execute_plan(plan, yes=False)
+    append_history(request, plan.source, plan.risk, False, 0)
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -283,6 +369,9 @@ def main(argv: list[str] | None = None) -> int:
         print(__version__)
         return 0
 
+    if args[0] == "--dry-run":
+        return _handle_dry_run(args[1:])
+
     command = args[0]
     rest = args[1:]
 
@@ -292,6 +381,10 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_expand(rest)
     if command == "run":
         return _handle_run(rest)
+    if command == "preview":
+        return _handle_preview(rest)
+    if command == "diff":
+        return _handle_diff(rest)
     if command == "check":
         return _handle_check(rest)
     if command == "explain":
@@ -304,6 +397,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_rules(rest)
     if command == "doctor":
         return _handle_doctor()
+    if command == "history":
+        return _handle_history(rest)
 
     return _handle_free_task(args)
 

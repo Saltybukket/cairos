@@ -7,6 +7,7 @@ AI backend has been configured.
 Supported providers:
 - ``ollama``: local HTTP API at http://localhost:11434
 - ``openai`` / ``openai-compatible``: chat-completions compatible API
+- ``gemini``: Google Gemini generateContent API
 - ``custom-command``: local command reading JSON from stdin and printing plan JSON
 """
 
@@ -174,6 +175,34 @@ def _openai_compatible_plan(request: str, config: dict[str, Any]) -> Plan:
     return _parse_plan(content)
 
 
+def _gemini_plan(request: str, config: dict[str, Any]) -> Plan:
+    """Call the Gemini generateContent API and parse the returned plan."""
+    ai = config["ai"]
+    endpoint = ai.get("endpoint") or "https://generativelanguage.googleapis.com/v1beta"
+    model = ai.get("model") or "gemini-1.5-flash"
+    key_env = ai.get("api_key_env") or "GEMINI_API_KEY"
+    timeout = int(ai.get("timeout_seconds", 60))
+    api_key = os.environ.get(key_env)
+    if not api_key:
+        raise AIPlannerError(f"Missing API key environment variable: {key_env}")
+    payload = _build_payload(request)
+    prompt = payload["system"] + "\n\n" + json.dumps({"request": request, "context": payload["context"], "rules": payload["rules"]})
+    body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.1}}).encode("utf-8")
+    req = urllib.request.Request(
+        endpoint.rstrip("/") + f"/models/{model}:generateContent?key={api_key}",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise AIPlannerError(f"Gemini backend failed: {exc}") from exc
+    text = data["candidates"][0]["content"]["parts"][0]["text"]
+    return _parse_plan(text)
+
+
 def _custom_command_plan(request: str, config: dict[str, Any]) -> Plan:
     """Call a user-provided local command for planning."""
     command = config["ai"].get("custom_command")
@@ -197,6 +226,8 @@ def plan_with_ai(request: str) -> Plan:
         return _ollama_plan(request, config)
     if provider in {"openai", "openai-compatible"}:
         return _openai_compatible_plan(request, config)
+    if provider == "gemini":
+        return _gemini_plan(request, config)
     if provider == "custom-command":
         return _custom_command_plan(request, config)
     raise AIPlannerError(f"Unsupported AI provider: {provider}")

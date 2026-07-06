@@ -97,7 +97,7 @@
     "expected_exit": 0
   },
   {
-    "name": "Direct free task aborts without exact yes",
+    "name": "Direct free task prints plan without execution",
     "command": [
       "python3",
       "-m",
@@ -106,14 +106,13 @@
       "folder",
       "docs"
     ],
-    "stdin": "no\n",
     "expected_contains": [
-      "Plan: Create folder docs.",
-      "Type \"yes\" to execute",
-      "Aborted."
+      "Summary: Create folder docs.",
+      "Source: template:folder",
+      "mkdir -p docs"
     ],
     "expected_stderr": "",
-    "expected_exit": 130
+    "expected_exit": 0
   },
   {
     "name": "Run create folder with yes verifies",
@@ -294,6 +293,163 @@
       "No deterministic template matched this request",
       "Local AI: cairos config ai use-ollama",
       "API AI: export OPENAI_API_KEY"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Configure Gemini AI",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "config",
+      "ai",
+      "use-gemini",
+      "gemini-1.5-flash"
+    ],
+    "expected_contains": [
+      "Configured Gemini AI",
+      "provider=gemini",
+      "model=gemini-1.5-flash",
+      "api_key_env=GEMINI_API_KEY"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Dry-run does not execute",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "--dry-run",
+      "create",
+      "folder",
+      "docs"
+    ],
+    "expected_contains": [
+      "Summary: Create folder docs.",
+      "Dry-run: no steps executed."
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Preview C++ header",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "preview",
+      "create",
+      "cpp",
+      "header",
+      "Player"
+    ],
+    "expected_contains": [
+      "Preview: Create C++ header for class Player.",
+      "include/Player.hpp"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Diff C++ header",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "diff",
+      "create",
+      "cpp",
+      "header",
+      "Player"
+    ],
+    "expected_contains": [
+      "Diff: Create C++ header for class Player.",
+      "+++ b/include/Player.hpp",
+      "class Player"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Typo tolerant C++ header",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "plan",
+      "erstelle",
+      "heder",
+      "Player"
+    ],
+    "expected_contains": [
+      "Summary: Create C++ header for class Player.",
+      "Source: template:cpp-header"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Rules affect C++ namespace",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path; from cairos.rules import set_rule; from cairos.templates import plan_from_template; set_rule('cpp.namespace','archmage'); p=plan_from_template('create cpp header Player'); print(p.steps[1].content)"
+    ],
+    "expected_contains": [
+      "namespace archmage",
+      "} // namespace archmage"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Context filters secrets",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path; Path('.env').write_text('SECRET=1'); Path('id_rsa').write_text('x'); Path('main.py').write_text('print(1)'); from cairos.context import context_json; print(context_json())"
+    ],
+    "expected_contains": [
+      "\"project_type\": \"python\"",
+      "\"path\": \"main.py\""
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Explain git reset soft",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "explain",
+      "git",
+      "reset",
+      "--soft",
+      "HEAD~1"
+    ],
+    "expected_contains": [
+      "Moves the current branch pointer",
+      "keeps changes staged",
+      "What stays unchanged"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "History command empty",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "history"
+    ],
+    "expected_contains": [
+      "history"
     ],
     "expected_stderr": "",
     "expected_exit": 0
