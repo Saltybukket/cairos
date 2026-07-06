@@ -14,6 +14,7 @@ CRITICAL_PATTERNS: list[tuple[str, str]] = [
     (r"\brm\s+-[^\n]*r[^\n]*f[^\n]*(\s+--no-preserve-root)?\s+/$", "recursive force deletion of root"),
     (r"\brm\s+-[^\n]*r[^\n]*f[^\n]*\s+(/\*|/\.\.?)(\s|$)", "recursive force deletion of a root glob"),
     (r"\brm\s+-[^\n]*r[^\n]*f[^\n]*\s+~/?$", "recursive force deletion of home directory"),
+    (r"\brm\s+-[^\n]*r[^\n]*f[^\n]*\s+\$home/?$", "recursive force deletion of home directory"),
     (r"\bsudo\s+rm\s+-[^\n]*r[^\n]*f", "sudo recursive force deletion"),
     (r"\bmkfs(\.|\s|$)", "filesystem formatting command"),
     (r"\bdd\s+.*\bof=/dev/", "raw disk write with dd"),
@@ -23,13 +24,14 @@ CRITICAL_PATTERNS: list[tuple[str, str]] = [
 
 HIGH_PATTERNS: list[tuple[str, str]] = [
     (r"\bchmod\s+-r\s+777\s+(/|~)", "recursive chmod 777 on broad path"),
-    (r"\bchown\s+-r\s+", "recursive ownership change"),
+    (r"\bchown\s+-r\s+[^\n]+\s+(/|~)", "recursive ownership change on broad path"),
     (r"\bcurl\s+.*\|\s*(bash|sh)\b", "downloaded script piped into shell"),
     (r"\bwget\s+.*\|\s*(bash|sh)\b", "downloaded script piped into shell"),
     (r"\bgit\s+clean\s+.*-[a-z]*f[a-z]*d[a-z]*x", "git clean deletes untracked and ignored files"),
     (r"\bgit\s+push\b[^\n]*(--force|(^|\s)-f(\s|$))", "force push rewrites remote history"),
     (r"\bgit\s+reset\s+--hard", "hard reset discards local changes"),
     (r"\bfind\s+\.\s+.*-exec\s+rm\s+-[^\n]*r[^\n]*f", "find exec recursive force deletion"),
+    (r"\bkill\s+-9\b", "force-killing a process"),
 ]
 
 MEDIUM_PATTERNS: list[tuple[str, str]] = [
@@ -41,6 +43,10 @@ MEDIUM_PATTERNS: list[tuple[str, str]] = [
     (r"\bgit\s+commit(\s|$)", "git commit changes repository history"),
     (r"\bgit\s+tag(\s|$)", "git tag changes repository refs"),
     (r"\bgit\s+push(\s|$)", "git push updates a remote repository"),
+    (r"\bnpm\s+install(\s|$)", "npm install changes dependencies"),
+    (r"\bpip\s+install\s+-r\s+requirements\.txt", "pip install changes Python environment"),
+    (r"\bpython\s+-m\s+pip\s+install\s+-r\s+requirements\.txt", "pip install changes Python environment"),
+    (r"\bcargo\s+build(\s|$)", "cargo build may download/build dependencies"),
 ]
 
 

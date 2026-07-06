@@ -79,7 +79,11 @@ def execute_plan(plan: Plan, yes: bool = False) -> int:
 
     phrase = plan.confirmation_phrase or "yes"
     if plan.requires_confirmation and not yes:
-        answer = input(f'Type "{phrase}" to execute: ').strip()
+        try:
+            answer = input(f'Type "{phrase}" to execute: ').strip()
+        except EOFError:
+            print("Aborted: confirmation input was not available.")
+            return 130
         if answer != phrase:
             print("Aborted.")
             return 130

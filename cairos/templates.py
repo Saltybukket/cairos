@@ -289,6 +289,32 @@ def _cpp_compound_plan(request: str) -> Plan:
     )
 
 
+def _folder_file_compound_plan(request: str) -> Plan:
+    """Create a folder with a single requested file when no language template applies."""
+    folder = _extract_named_value(request, "folder") or _extract_name(request, "demo")
+    filename = _extract_named_value(request, "file") or "main.txt"
+    safe_folder = _safe_rel_path(folder)
+    safe_file = _safe_rel_path(filename)
+    if safe_folder is None:
+        return _unsafe_path_plan(folder)
+    if safe_file is None:
+        return _unsafe_path_plan(filename)
+    path = str(Path(safe_folder) / safe_file)
+    content = ""
+    if filename.endswith(".py"):
+        content = "def main():\n    pass\n\n\nif __name__ == \"__main__\":\n    main()\n"
+    return Plan(
+        summary=f"Create folder {safe_folder} with file {safe_file}.",
+        steps=[
+            CommandStep(kind="mkdir", path=safe_folder, description=f"Create folder {safe_folder}.", changes_files=True),
+            CommandStep(kind="write_file", path=path, content=content, description=f"Write {path}.", changes_files=True),
+        ],
+        risk="low",
+        verification=[VerificationStep(kind="dir_exists", target=safe_folder), VerificationStep(kind="file_exists", target=path)],
+        source="template:folder-file-compound",
+    )
+
+
 def _cpp_mini_project_plan(request: str) -> Plan:
     """Create a tiny multi-file C++ project with header, source, main and CMake."""
     name = _extract_name(request, "new_cpp_project")
@@ -645,19 +671,49 @@ def _create_folder_plan(request: str) -> Plan:
 
 
 def _create_file_plan(request: str) -> Plan:
-    match = re.search(rf"\b(?:create|make|touch|erstelle|erstell|mache|macke)\s+(?:empty\s+)?(?:file|datei)\s+(?:{NAMED_VALUE_RE})\s*$", request, flags=re.IGNORECASE)
+    match = re.search(rf"\b(?:create|make|touch|erstelle|erstell|mache|macke)\s+(?:a\s+|an\s+)?(?:empty\s+)?(?:file|datei)\s+(?:(?:named|called|namens)\s+)?(?:{NAMED_VALUE_RE})(?:\s+with\s+(.+))?\s*$", request, flags=re.IGNORECASE)
     if not match:
         return _unsafe_path_plan("<missing-file-name>")
     path = _first_group(match)
+    content_hint = match.group(4) if len(match.groups()) >= 4 else None
     safe_path = _safe_rel_path(path)
     if safe_path is None:
         return _unsafe_path_plan(path)
+    content = ""
+    summary = f"Create empty file {safe_path}."
+    if content_hint:
+        if "hello world" in content_hint.lower():
+            content = "hello world\n"
+            summary = f"Create file {safe_path} with hello world."
+        else:
+            content = content_hint.strip() + "\n"
+            summary = f"Create file {safe_path} with requested text."
     return Plan(
-        summary=f"Create empty file {safe_path}.",
-        steps=[CommandStep(kind="write_file", path=safe_path, content="", description=f"Create empty file {safe_path}.", changes_files=True)],
+        summary=summary,
+        steps=[CommandStep(kind="write_file", path=safe_path, content=content, description=f"Write {safe_path}.", changes_files=True)],
         risk="low",
         verification=[VerificationStep(kind="file_exists", target=safe_path)],
         source="template:file",
+    )
+
+
+def _append_todo_plan(request: str) -> Plan:
+    match = re.search(r"\bappend\s+(.+?)\s+to\s+([a-zA-Z0-9_./-]+)\s*$", request, flags=re.IGNORECASE)
+    text = match.group(1).strip() if match else "TODO"
+    path = match.group(2).strip() if match else "README.md"
+    safe_path = _safe_rel_path(path)
+    if safe_path is None:
+        return _unsafe_path_plan(path)
+    if text.lower() == "todo":
+        text = "- TODO\n"
+    else:
+        text = text + "\n"
+    return Plan(
+        summary=f"Append text to {safe_path}.",
+        steps=[CommandStep(kind="append_file", path=safe_path, content=text, description=f"Append to {safe_path}.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=safe_path)],
+        source="template:append-file",
     )
 
 
@@ -672,13 +728,30 @@ def _readme_plan(request: str) -> Plan:
     )
 
 
-def _gitignore_plan(_: str) -> Plan:
+def _gitignore_plan(request: str) -> Plan:
+    text = request.lower()
+    if "node" in text:
+        content = "node_modules/\ndist/\nbuild/\n.env\n.DS_Store\nnpm-debug.log*\n"
+        source = "template:gitignore-node"
+        summary = "Create Node .gitignore."
+    elif "cpp" in text or "c++" in text or re.search(r"\bc\b", text):
+        content = "build/\ncmake-build-*/\nCMakeFiles/\nCMakeCache.txt\ncompile_commands.json\n*.o\n*.obj\n*.exe\n.DS_Store\n"
+        source = "template:gitignore-cpp"
+        summary = "Create C/C++ .gitignore."
+    elif "rust" in text:
+        content = "target/\nCargo.lock\n.DS_Store\n"
+        source = "template:gitignore-rust"
+        summary = "Create Rust .gitignore."
+    else:
+        content = ".venv/\nvenv/\n__pycache__/\n*.pyc\n.pytest_cache/\n*.egg-info/\nbuild/\ndist/\ncmake-build-*/\n.vscode/\n.idea/\n"
+        source = "template:gitignore"
+        summary = "Create a useful Python/C++ .gitignore."
     return Plan(
-        summary="Create a useful Python/C++ .gitignore.",
-        steps=[CommandStep(kind="write_file", path=".gitignore", content=".venv/\nvenv/\n__pycache__/\n*.pyc\n.pytest_cache/\n*.egg-info/\nbuild/\ndist/\ncmake-build-*/\n.vscode/\n.idea/\n", description="Write .gitignore.", changes_files=True)],
+        summary=summary,
+        steps=[CommandStep(kind="write_file", path=".gitignore", content=content, description="Write .gitignore.", changes_files=True)],
         risk="low",
         verification=[VerificationStep(kind="file_exists", target=".gitignore")],
-        source="template:gitignore",
+        source=source,
     )
 
 
@@ -744,6 +817,286 @@ def _git_commit_plan(request: str) -> Plan:
     )
 
 
+def _create_folders_plan(request: str) -> Plan:
+    match = re.search(r"\b(?:create|make|mkdir)\s+folders\s+(.+)$", request, flags=re.IGNORECASE)
+    raw = match.group(1) if match else "src tests docs"
+    names = [part for part in re.split(r"[\s,]+", raw) if part and part.lower() not in {"and", "folders", "folder"}]
+    safe_names: list[str] = []
+    for name in names:
+        safe = _safe_rel_path(name.strip('"').strip("'"))
+        if safe is None:
+            return _unsafe_path_plan(name)
+        safe_names.append(safe)
+    return Plan(
+        summary=f"Create folders {', '.join(safe_names)}.",
+        steps=[CommandStep(kind="mkdir", path=name, description=f"Create directory {name}.", changes_files=True) for name in safe_names],
+        risk="low",
+        verification=[VerificationStep(kind="dir_exists", target=name) for name in safe_names],
+        source="template:folders",
+    )
+
+
+def _editorconfig_plan(_: str) -> Plan:
+    content = """root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+
+[*.{json,md,yml,yaml}]
+indent_size = 2
+"""
+    return Plan(
+        summary="Create .editorconfig.",
+        steps=[CommandStep(kind="write_file", path=".editorconfig", content=content, description="Write .editorconfig.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=".editorconfig")],
+        source="template:editorconfig",
+    )
+
+
+def _env_example_plan(_: str) -> Plan:
+    content = "# Copy to .env and fill in local values. Do not commit real secrets.\nGEMINI_API_KEY=\nOPENAI_API_KEY=\n"
+    return Plan(
+        summary="Create .env.example without secrets.",
+        steps=[CommandStep(kind="write_file", path=".env.example", content=content, description="Write .env.example.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=".env.example")],
+        source="template:env-example",
+    )
+
+
+def _mit_license_plan(_: str) -> Plan:
+    content = """MIT License
+
+Copyright (c) YEAR AUTHOR
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+"""
+    return Plan(
+        summary="Create MIT LICENSE file.",
+        steps=[CommandStep(kind="write_file", path="LICENSE", content=content, description="Write MIT license template.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target="LICENSE")],
+        source="template:license-mit",
+    )
+
+
+def _repo_setup_plan(_: str) -> Plan:
+    return Plan(
+        summary="Inspect and initialize common project structure.",
+        steps=[
+            CommandStep(kind="command", command="git status --short --branch", description="Inspect git state."),
+            CommandStep(kind="mkdir", path="src", description="Create src directory if missing.", changes_files=True),
+            CommandStep(kind="mkdir", path="tests", description="Create tests directory if missing.", changes_files=True),
+            CommandStep(kind="mkdir", path="docs", description="Create docs directory if missing.", changes_files=True),
+            CommandStep(kind="write_file", path="README.md", content=f"# {Path.cwd().name}\n\n", description="Create README if desired.", changes_files=True),
+        ],
+        risk="medium",
+        notes=["Review existing files before running; this may create or replace README.md."],
+        verification=[VerificationStep(kind="dir_exists", target="src"), VerificationStep(kind="dir_exists", target="tests")],
+        source="template:repo-setup",
+    )
+
+
+def _python_config_plan(kind: str) -> Plan:
+    configs = {
+        "pytest": ("pytest.ini", "[pytest]\ntestpaths = tests\npython_files = test_*.py\n"),
+        "ruff": ("ruff.toml", "line-length = 100\ntarget-version = \"py310\"\n"),
+        "black": ("pyproject.toml", "[tool.black]\nline-length = 100\ntarget-version = ['py310']\n"),
+        "mypy": ("mypy.ini", "[mypy]\npython_version = 3.10\nwarn_unused_ignores = True\n"),
+    }
+    path, content = configs[kind]
+    return Plan(
+        summary=f"Create {kind} configuration.",
+        steps=[CommandStep(kind="write_file", path=path, content=content, description=f"Write {path}.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=path)],
+        source=f"template:{kind}-config",
+    )
+
+
+def _python_module_plan(request: str) -> Plan:
+    name = _extract_name(request, default="calculator").replace("-", "_")
+    safe = _safe_rel_path(name)
+    if safe is None:
+        return _unsafe_path_plan(name)
+    return Plan(
+        summary=f"Create Python package module {safe}.",
+        steps=[
+            CommandStep(kind="mkdir", path=safe, description="Create package directory.", changes_files=True),
+            CommandStep(kind="write_file", path=f"{safe}/__init__.py", content="", description="Write package initializer.", changes_files=True),
+        ],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=f"{safe}/__init__.py")],
+        source="template:python-module",
+    )
+
+
+def _python_test_file_plan(request: str) -> Plan:
+    name = _extract_name(request, default="calculator").replace("-", "_")
+    safe = _safe_rel_path(name)
+    if safe is None:
+        return _unsafe_path_plan(name)
+    content = f"def test_{safe}_placeholder():\n    assert True\n"
+    return Plan(
+        summary=f"Create pytest file for module {safe}.",
+        steps=[
+            CommandStep(kind="mkdir", path="tests", description="Create tests directory.", changes_files=True),
+            CommandStep(kind="write_file", path=f"tests/test_{safe}.py", content=content, description="Write pytest file.", changes_files=True),
+        ],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=f"tests/test_{safe}.py")],
+        source="template:python-test-file",
+    )
+
+
+def _powershell_script_plan(request: str) -> Plan:
+    match = re.search(r"(?:script|skript)\s+([a-zA-Z][a-zA-Z0-9_-]*)(?:\.ps1)?", request, flags=re.IGNORECASE)
+    name = match.group(1) if match else "repo_info"
+    path = name if name.endswith(".ps1") else f"{name}.ps1"
+    safe = _safe_rel_path(path)
+    if safe is None:
+        return _unsafe_path_plan(path)
+    content = """Write-Output "Current folder: $(Get-Location)"
+$branch = git branch --show-current 2>$null
+if ($branch) {
+    Write-Output "Current git branch: $branch"
+} else {
+    Write-Output "Current git branch: not a git repository"
+}
+"""
+    return Plan(
+        summary="Create a PowerShell script that prints the current folder and git branch.",
+        steps=[CommandStep(kind="write_file", path=safe, content=content, description=f"Write {safe}.", changes_files=True)],
+        risk="low",
+        verification=[VerificationStep(kind="file_exists", target=safe)],
+        source="template:powershell-script",
+    )
+
+
+def _wsl_plan(request: str) -> Plan | None:
+    text = request.lower()
+    distro = _extract_named_value(request, "any")
+    distro_match = re.search(r"\bwsl\s+(?:distro|distribution)\s+([A-Za-z][A-Za-z0-9_.-]*)", request, flags=re.IGNORECASE)
+    if not distro_match:
+        distro_match = re.search(r"\b(?:wsl2?|distro|distribution)\s+([A-Za-z][A-Za-z0-9_.-]*)", request, flags=re.IGNORECASE)
+    if distro_match and distro_match.group(1).lower() not in {"distro", "distribution", "distros"}:
+        distro = distro_match.group(1)
+    if "list" in text or "show wsl distros" in text:
+        return _simple_command_plan("List WSL distributions.", "wsl -l -v", "template:wsl-list", confirm=False)
+    if "status" in text:
+        return _simple_command_plan("Show WSL status.", "wsl --status", "template:wsl-status", confirm=False)
+    if "shutdown" in text and ("all" in text or "distros" in text or "wsl" in text and not distro):
+        return _simple_command_plan("Shutdown all WSL distributions.", "wsl --shutdown", "template:wsl-shutdown", risk="medium", changes=True)
+    if ("terminate" in text or "shutdown" in text or "stop" in text) and distro:
+        safe = _safe_rel_path(distro)
+        if safe is None:
+            return _unsafe_path_plan(distro)
+        return _simple_command_plan(f"Terminate WSL distribution {safe}.", f"wsl --terminate {shlex.quote(safe)}", "template:wsl-terminate", risk="medium", changes=True)
+    if "start" in text and distro:
+        safe = _safe_rel_path(distro)
+        if safe is None:
+            return _unsafe_path_plan(distro)
+        plan = _simple_command_plan(f"Start WSL distribution {safe}.", f"wsl -d {shlex.quote(safe)}", "template:wsl-start", risk="medium", changes=True)
+        plan.notes.append("Starting a WSL distro may open an interactive session and take over the terminal.")
+        return plan
+    if "explorer" in text or "folder" in text:
+        return _simple_command_plan("Open the current WSL folder in Windows Explorer.", "explorer.exe .", "template:wsl-explorer", confirm=False)
+    return None
+
+
+def _system_plan(request: str) -> Plan | None:
+    text = request.lower()
+    if "disk" in text and ("usage" in text or "space" in text):
+        return _simple_command_plan("Show disk usage.", "df -h && du -sh .", "template:system-disk", confirm=False)
+    if "memory" in text:
+        return _simple_command_plan("Show memory usage.", "free -h", "template:system-memory", confirm=False)
+    if "current shell" in text:
+        return _simple_command_plan("Show the current shell.", "echo $SHELL", "template:system-shell", confirm=False)
+    if "listening ports" in text:
+        return _simple_command_plan("List listening ports.", "ss -tulpn", "template:system-ports", confirm=False)
+    if "python processes" in text:
+        return _simple_command_plan("Show running Python processes.", "ps aux | grep '[p]ython'", "template:system-python-processes", confirm=False)
+    port_match = re.search(r"port\s+(\d+)", text)
+    if "kill" in text and port_match:
+        port = port_match.group(1)
+        return _simple_command_plan(f"Inspect processes using port {port} before killing.", f"lsof -i :{port}", "template:system-kill-port-inspect", risk="medium", confirm=True)
+    return None
+
+
+def _windows_plan(request: str) -> Plan | None:
+    text = request.lower()
+    if "explorer" in text or ("open" in text and "current folder" in text):
+        return _simple_command_plan("Open the current folder in Explorer.", "explorer .", "template:windows-explorer", confirm=False)
+    if "vscode" in text or "vs code" in text:
+        return _simple_command_plan("Open the current project in VS Code.", "code .", "template:vscode-open", confirm=False)
+    if "powershell version" in text:
+        return _simple_command_plan("Show PowerShell version.", "$PSVersionTable.PSVersion", "template:powershell-version", confirm=False)
+    if re.search(r"\bshow\s+path\b", text):
+        return _simple_command_plan("Show PATH.", "echo $PATH", "template:show-path", confirm=False)
+    if "add" in text and ".local/bin" in text and "path" in text:
+        return Plan(
+            summary="Print instructions to add ~/.local/bin to PATH.",
+            steps=[CommandStep(kind="command", command="printf '%s\n' 'Add this to your shell profile: export PATH=\"$HOME/.local/bin:$PATH\"'", description="Print PATH instructions.")],
+            risk="low",
+            requires_confirmation=False,
+            source="template:path-instructions",
+        )
+    if "environment variable" in text:
+        match = re.search(r"environment variable\s+([A-Z_][A-Z0-9_]*)", request, flags=re.IGNORECASE)
+        name = match.group(1) if match else "GEMINI_API_KEY"
+        return _simple_command_plan(f"Show whether {name} is set without printing its value.", f"test -n \"${name}\" && echo '{name}=set' || echo '{name}=not set'", "template:env-status", confirm=False)
+    if "gemini" in text and "key" in text and ("set" in text or "env" in text):
+        return Plan(
+            summary="Print safe Gemini API key setup commands.",
+            steps=[CommandStep(kind="command", command="printf '%s\n' 'PowerShell: setx GEMINI_API_KEY \"your-key\"' 'Current shell: export GEMINI_API_KEY=\"your-key\"'", description="Print secret setup instructions.")],
+            risk="low",
+            requires_confirmation=False,
+            notes=["Do not paste real API keys into CAIROS commands, commits or logs."],
+            source="template:gemini-key-instructions",
+        )
+    return None
+
+
+def _package_install_plan(request: str) -> Plan | None:
+    text = request.lower()
+    if "python" in text or Path("requirements.txt").exists() or Path("pyproject.toml").exists():
+        return _simple_command_plan("Install Python dependencies.", "python -m pip install -r requirements.txt", "template:pip-install", risk="medium", changes=True)
+    if "npm" in text or "node" in text or Path("package.json").exists():
+        return _simple_command_plan("Install npm dependencies.", "npm install", "template:npm-install", risk="medium", changes=True)
+    if "rust" in text or "cargo" in text or Path("Cargo.toml").exists():
+        return _simple_command_plan("Fetch/build Rust dependencies.", "cargo build", "template:cargo-build", risk="medium", changes=True)
+    return None
+
+
+def _cleanup_plan(request: str) -> Plan | None:
+    text = request.lower()
+    if "node_modules" in text:
+        return _simple_command_plan("Remove node_modules.", "rm -rf node_modules", "template:cleanup-node-modules", risk="medium", changes=True)
+    if "pytest_cache" in text:
+        return _simple_command_plan("Remove .pytest_cache.", "rm -rf .pytest_cache", "template:cleanup-pytest-cache", risk="medium", changes=True)
+    if "dist" in text:
+        return _simple_command_plan("Remove dist folder.", "rm -rf dist", "template:cleanup-dist", risk="medium", changes=True)
+    if "build" in text:
+        return _simple_command_plan("Remove build folder.", "rm -rf build", "template:cleanup-build-folder", risk="medium", changes=True)
+    if "temporary" in text or "temp" in text:
+        return _simple_command_plan("Remove common local temporary files.", "find . -maxdepth 2 \\( -name '*~' -o -name '*.tmp' -o -name '*.bak' \\) -delete", "template:cleanup-temp", risk="medium", changes=True)
+    return None
+
+
 def _simple_command_plan(summary: str, command: str, source: str, risk: str = "low", changes: bool = False, confirm: bool | None = None) -> Plan:
     return Plan(
         summary=summary,
@@ -795,14 +1148,35 @@ def plan_from_template(request: str) -> Plan | None:
     tokens = tokenize(request)
     text = request.lower()
 
+    if "powershell" in tokens and ("script" in tokens or "ps1" in text) and has_concept(tokens, "make"):
+        return _powershell_script_plan(request)
+
     if _looks_like_cpp_compound_request(tokens, text):
         return _cpp_compound_plan(request)
+
+    if has_concept(tokens, "folder") and has_concept(tokens, "file") and _extract_named_value(request, "folder") and _extract_named_value(request, "file"):
+        return _folder_file_compound_plan(request)
 
     if has_concept(tokens, "cpp") and "mini" in tokens and has_concept(tokens, "project") and has_concept(tokens, "class") and "main" in tokens:
         return _cpp_mini_project_plan(request)
 
     if ("script" in tokens or "skript" in tokens) and (has_concept(tokens, "make") or "executable" in tokens):
         return _bash_script_plan(request)
+
+    if "wsl" in text:
+        wsl_plan = _wsl_plan(request)
+        if wsl_plan:
+            return wsl_plan
+
+    if any(word in text for word in ["explorer", "vscode", "vs code", "powershell version", "show path", "environment variable", "gemini api key"]):
+        windows_plan = _windows_plan(request)
+        if windows_plan:
+            return windows_plan
+
+    if any(phrase in text for phrase in ["disk usage", "memory usage", "current shell", "list listening ports", "python processes", "kill process by port"]):
+        system_plan = _system_plan(request)
+        if system_plan:
+            return system_plan
 
     if "commit" in tokens and "add" in tokens and "message" in tokens:
         return _git_commit_plan(request)
@@ -817,6 +1191,9 @@ def plan_from_template(request: str) -> Plan | None:
         return _git_inspection_plan(request)
 
     if not _has_multiple_creation_targets(tokens, text) and has_concept(tokens, "python") and has_concept(tokens, "project") and has_concept(tokens, "make"):
+        return _python_project_plan(request)
+
+    if "python" in tokens and "cli" in tokens and has_concept(tokens, "app") and has_concept(tokens, "make"):
         return _python_project_plan(request)
 
     if not _has_multiple_creation_targets(tokens, text) and has_concept(tokens, "cpp") and has_concept(tokens, "project") and has_concept(tokens, "make"):
@@ -834,7 +1211,7 @@ def plan_from_template(request: str) -> Plan | None:
     if not _has_multiple_creation_targets(tokens, text) and has_concept(tokens, "source") and (has_concept(tokens, "cpp") or has_concept(tokens, "class")):
         return _cpp_source_plan(request)
 
-    if not _has_multiple_creation_targets(tokens, text) and has_concept(tokens, "cmake") and has_concept(tokens, "file"):
+    if not _has_multiple_creation_targets(tokens, text) and "cmake" in text and has_concept(tokens, "file"):
         return _cmake_plan(request)
 
     if has_concept(tokens, "node") and has_concept(tokens, "project") and has_concept(tokens, "make"):
@@ -852,11 +1229,35 @@ def plan_from_template(request: str) -> Plan | None:
     if has_concept(tokens, "requirements") and has_concept(tokens, "make"):
         return _requirements_plan(request)
 
+    if "freeze" in tokens and "requirements" in tokens:
+        return _simple_command_plan("Freeze installed Python packages to requirements.txt.", "python -m pip freeze > requirements.txt", "template:freeze-requirements", risk="medium", changes=True)
+
+    if "update" in tokens and "requirements" in tokens:
+        return _simple_command_plan("Update Python dependencies from requirements.txt.", "python -m pip install --upgrade -r requirements.txt", "template:update-requirements", risk="medium", changes=True)
+
     if "pyproject" in text and has_concept(tokens, "make"):
         return _pyproject_plan(request)
 
+    if "pytest" in tokens and "config" in tokens:
+        return _python_config_plan("pytest")
+    if "ruff" in tokens and "config" in tokens:
+        return _python_config_plan("ruff")
+    if "black" in tokens and "config" in tokens:
+        return _python_config_plan("black")
+    if "mypy" in tokens and "config" in tokens:
+        return _python_config_plan("mypy")
+
+    if "package" in tokens and "module" in tokens and has_concept(tokens, "python"):
+        return _python_module_plan(request)
+
+    if "test" in tokens and "file" in tokens and "module" in tokens:
+        return _python_test_file_plan(request)
+
     if has_concept(tokens, "makefile") and has_concept(tokens, "make"):
         return _makefile_plan(request)
+
+    if ("env example" in text or ".env.example" in text) and has_concept(tokens, "make"):
+        return _env_example_plan(request)
 
     if "pytest" in tokens and "add" in tokens:
         return _append_requirement_plan("pytest")
@@ -883,17 +1284,47 @@ def plan_from_template(request: str) -> Plan | None:
             source="template:git-init",
         )
 
+    if "setup this repo" in text or "initialize this project" in text or "create project structure" in text:
+        return _repo_setup_plan(request)
+
+    if "inspect this repo" in text:
+        return _git_inspection_plan(request)
+
+    if "docs folder" in text and "readme" in text and has_concept(tokens, "make"):
+        return Plan(
+            summary="Create docs folder and README.md.",
+            steps=[
+                CommandStep(kind="mkdir", path="docs", description="Create docs directory.", changes_files=True),
+                CommandStep(kind="write_file", path="README.md", content=f"# {Path.cwd().name}\n\n", description="Write README.md.", changes_files=True),
+            ],
+            risk="low",
+            verification=[VerificationStep(kind="dir_exists", target="docs"), VerificationStep(kind="file_exists", target="README.md")],
+            source="template:docs-readme",
+        )
+
+    if re.search(r"\b(?:create|make|mkdir)\s+folders\s+", text):
+        return _create_folders_plan(request)
+
     if not _has_multiple_creation_targets(tokens, text) and re.search(r"\b(?:make|create|mkdir|mache|macke|mach|erstelle|erstell)\s+(?:nested\s+)?(?:folder|directory|dir|ordner|verzeichnis)\s+\S+", text):
         return _create_folder_plan(request)
 
-    if not _has_multiple_creation_targets(tokens, text) and re.search(rf"\b(?:create|make|touch|erstelle|erstell|mache|macke)\s+(?:empty\s+)?(?:file|datei)\s+(?:{NAMED_VALUE_RE})\s*$", request, flags=re.IGNORECASE):
+    if not _has_multiple_creation_targets(tokens, text) and re.search(rf"\b(?:create|make|touch|erstelle|erstell|mache|macke)\s+(?:a\s+|an\s+)?(?:empty\s+)?(?:file|datei)\s+(?:(?:named|called|namens)\s+)?(?:{NAMED_VALUE_RE})(?:\s+with\s+.+)?\s*$", request, flags=re.IGNORECASE):
         return _create_file_plan(request)
+
+    if text.startswith("append ") and " to " in text:
+        return _append_todo_plan(request)
 
     if has_concept(tokens, "readme") and has_concept(tokens, "make"):
         return _readme_plan(request)
 
     if has_concept(tokens, "gitignore") and has_concept(tokens, "make"):
         return _gitignore_plan(request)
+
+    if "editorconfig" in text and has_concept(tokens, "make"):
+        return _editorconfig_plan(request)
+
+    if "license" in tokens and "mit" in tokens and has_concept(tokens, "make"):
+        return _mit_license_plan(request)
 
     if has_concept(tokens, "large") and "file" in text:
         return Plan(
@@ -922,6 +1353,12 @@ def plan_from_template(request: str) -> Plan | None:
             source="template:git-status",
         )
 
+    if "show" in tokens and "changed" in tokens and "files" in tokens:
+        return _simple_command_plan("Show changed files.", "git diff --name-status", "template:git-changed-files", confirm=False)
+
+    if "show" in tokens and "staged" in tokens and "files" in tokens:
+        return _simple_command_plan("Show staged files.", "git diff --cached --name-status", "template:git-staged-files", confirm=False)
+
     if has_concept(tokens, "fetch") and has_concept(tokens, "git"):
         return Plan(
             summary="Fetch latest git remote refs.",
@@ -930,6 +1367,16 @@ def plan_from_template(request: str) -> Plan | None:
             requires_confirmation=False,
             source="template:git-fetch",
         )
+
+    if "sync" in tokens and "origin" in tokens and "main" in tokens:
+        return _simple_command_plan("Fetch origin and inspect sync state with origin/main.", "git fetch origin && git log --oneline --left-right --cherry-pick HEAD...origin/main", "template:git-sync-inspect", confirm=False)
+
+    if "feature" in tokens and "branch" in tokens and has_concept(tokens, "make"):
+        name = _extract_name(request, default="feature")
+        safe = _safe_rel_path(name)
+        if safe is None:
+            return _unsafe_path_plan(name)
+        return _simple_command_plan(f"Create feature branch {safe}.", f"git switch -c {shlex.quote(safe)}", "template:git-feature-branch", risk="medium", changes=True)
 
     if has_concept(tokens, "git") and "recent" in tokens and "commits" in tokens:
         return _simple_command_plan("Show recent git commits.", "git log --oneline --decorate --max-count=12", "template:git-log", confirm=False)
@@ -943,8 +1390,27 @@ def plan_from_template(request: str) -> Plan | None:
     if has_concept(tokens, "node") and "install" in tokens:
         return _simple_command_plan("Install Node dependencies with npm.", "npm install", "template:npm-install", risk="medium", changes=True)
 
+    if "install" in tokens and ("dependencies" in tokens or "dependency" in tokens):
+        package_plan = _package_install_plan(request)
+        if package_plan:
+            return package_plan
+
     if has_concept(tokens, "node") and has_concept(tokens, "test"):
         return _simple_command_plan("Run npm tests.", "npm test", "template:npm-test", confirm=False)
+
+    if "npm" in tokens and "test" in tokens:
+        return _simple_command_plan("Run npm tests.", "npm test", "template:npm-test", confirm=False)
+
+    if "npm" in tokens and "install" in tokens:
+        return _simple_command_plan("Install Node dependencies with npm.", "npm install", "template:npm-install", risk="medium", changes=True)
+
+    if ("remove" in tokens or has_concept(tokens, "clean")):
+        cleanup_plan = _cleanup_plan(request)
+        if cleanup_plan:
+            return cleanup_plan
+
+    if "cargo" in tokens and has_concept(tokens, "build"):
+        return _simple_command_plan("Build Rust project.", "cargo build", "template:cargo-build", risk="medium", changes=True)
 
     if "cargo" in tokens and has_concept(tokens, "test"):
         return _simple_command_plan("Run cargo tests.", "cargo test", "template:cargo-test", confirm=False)
@@ -960,6 +1426,15 @@ def plan_from_template(request: str) -> Plan | None:
 
     if has_concept(tokens, "clean") and has_concept(tokens, "build"):
         return _simple_command_plan("Clean generated build folders.", "rm -rf build dist", "template:clean-build", risk="medium", changes=True)
+
+    if "cmake" in tokens and has_concept(tokens, "build"):
+        return _simple_command_plan("Configure and build CMake project.", "cmake -S . -B build && cmake --build build", "template:cmake-build", risk="medium", changes=True)
+
+    if "make" in tokens and "test" in tokens:
+        return _simple_command_plan("Run make test.", "make test", "template:make-test", confirm=False)
+
+    if "make" in tokens and "clean" in tokens:
+        return _simple_command_plan("Run make clean.", "make clean", "template:make-clean", risk="medium", changes=True)
 
     if has_concept(tokens, "test") and ("run" in tokens or "starte" in text or "mach" in text or "mache" in text or "macke" in text):
         return _run_tests_plan(request)

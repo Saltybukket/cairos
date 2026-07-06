@@ -29,9 +29,11 @@ cairos quicksetup
 cairos setup
 cairos install-info
 cairos doctor
-cairos templates [python|cpp|git|ai]
+cairos templates [python|cpp|git|ai|system|wsl|windows|node|rust|files|cleanup]
 cairos shell install zsh
 cairos shell install powershell
+cairos completion zsh
+cairos completion powershell
 cairos history [last|clear]
 ```
 
@@ -81,6 +83,12 @@ cairos templates
 cairos templates python
 cairos templates cpp
 cairos templates git
+cairos templates system
+cairos templates wsl
+cairos templates windows
+cairos templates node
+cairos templates rust
+cairos templates cleanup
 cairos templates ai
 ```
 
@@ -91,6 +99,11 @@ cairos create python project demo with venv git pytest
 cairos create cpp header Player
 cairos create cpp project engine with cmake
 cairos create bash script branch_info that prints current git branch and folder
+cairos create powershell script repo_info that prints current git branch and folder
+cairos list wsl distros
+cairos open project in vscode
+cairos show disk usage
+cairos remove node_modules
 cairos check if repo is ready to commit
 ```
 
@@ -285,3 +298,10 @@ cairos shell install powershell
 ```
 
 They print optional snippets and do not silently modify shell profile files.
+
+Completion scripts can be printed to stdout:
+
+```bash
+cairos completion zsh
+cairos completion powershell
+```

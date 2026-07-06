@@ -7,7 +7,7 @@ This file lists common CAIROS setup and usage problems with fixes.
 Recommended install:
 
 ```bash
-pipx install cairos-shell
+pipx install git+https://github.com/Saltybukket/cairos.git
 ```
 
 Check installation details:
@@ -16,11 +16,17 @@ Check installation details:
 cairos install-info
 ```
 
-If installed with `python -m pip install --user cairos-shell`, ensure
-`~/.local/bin` is on `PATH`:
+Ensure `~/.local/bin` is on `PATH`:
 
 ```bash
-echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.profile
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+On Windows PowerShell, run:
+
+```powershell
+py -m pipx ensurepath
 ```
 
 Restart the terminal after changing `PATH`.

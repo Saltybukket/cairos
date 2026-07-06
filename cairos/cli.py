@@ -75,8 +75,9 @@ Usage:
   cairos quicksetup
   cairos init [--global]
   cairos setup
-  cairos templates [python|cpp|git|ai]
+  cairos templates [python|cpp|git|ai|system|wsl|windows|node|rust|files|cleanup]
   cairos shell install zsh|powershell
+  cairos completion zsh|powershell
   cairos history [last|clear]
 
 Examples:
@@ -462,6 +463,7 @@ def _install_info() -> str:
         "CAIROS Install Info",
         "Package/distribution: cairos-shell",
         "Command: cairos",
+        "GitHub repo: https://github.com/Saltybukket/cairos",
         f"Version: {__version__}",
         f"Platform: {platform.system() or 'unknown'}",
         f"Shell guess: {_shell_guess()}",
@@ -518,6 +520,8 @@ def _handle_setup() -> int:
     print("- Direct `cairos <task>` only prints a plan.")
     print("- Use `cairos run <task>` to execute after confirmation.")
     print("Recommended install:")
+    print("- pipx install git+https://github.com/Saltybukket/cairos.git")
+    print("Future PyPI install:")
     print("- pipx install cairos-shell")
     print("Useful next commands:")
     print("- cairos init")
@@ -537,6 +541,7 @@ def _handle_quicksetup() -> int:
     print("1. Install status")
     print("   package: cairos-shell")
     print("   command: cairos")
+    print("   github repo: https://github.com/Saltybukket/cairos")
     print(f"   version: {__version__}")
     print(f"   command path: {shutil.which('cairos') or '<not found on PATH>'}")
     print("")
@@ -567,7 +572,66 @@ def _handle_quicksetup() -> int:
     print("   cairos doctor")
     print("   cairos context")
     print("   cairos check if repo is ready to commit")
+    print("")
+    print("6. Install and update")
+    print("   current GitHub install:")
+    print("     pipx install git+https://github.com/Saltybukket/cairos.git")
+    print("   update GitHub install:")
+    print("     pipx uninstall cairos-shell")
+    print("     pipx install git+https://github.com/Saltybukket/cairos.git")
+    print("   future PyPI install after release:")
+    print("     pipx install cairos-shell")
+    print("   future PyPI update after release:")
+    print("     pipx upgrade cairos-shell")
     return 0
+
+
+COMPLETION_COMMANDS = [
+    "plan", "run", "expand", "preview", "diff", "explain", "check", "context",
+    "config", "rules", "doctor", "install-info", "quicksetup", "setup",
+    "templates", "history", "shell", "completion", "init",
+]
+
+
+def _completion_zsh() -> str:
+    words = " ".join(COMPLETION_COMMANDS)
+    return f"""#compdef cairos
+
+_cairos() {{
+  local -a commands
+  commands=({words})
+  _describe 'cairos command' commands
+}}
+
+_cairos "$@"
+"""
+
+
+def _completion_powershell() -> str:
+    quoted = ", ".join(f"'{command}'" for command in COMPLETION_COMMANDS)
+    return f"""Register-ArgumentCompleter -Native -CommandName cairos -ScriptBlock {{
+    param($wordToComplete, $commandAst, $cursorPosition)
+    $commands = @({quoted})
+    $commands |
+        Where-Object {{ $_ -like "$wordToComplete*" }} |
+        ForEach-Object {{ [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }}
+}}
+"""
+
+
+def _handle_completion(args: list[str]) -> int:
+    if not args:
+        print("Missing shell. Try: cairos completion zsh or cairos completion powershell", file=sys.stderr)
+        return 1
+    shell = args[0].lower()
+    if shell == "zsh":
+        print(_completion_zsh(), end="")
+        return 0
+    if shell in {"powershell", "pwsh"}:
+        print(_completion_powershell(), end="")
+        return 0
+    print("Unsupported shell. Try: cairos completion zsh or cairos completion powershell", file=sys.stderr)
+    return 1
 
 
 def _templates_text(topic: str = "all") -> str:
@@ -596,16 +660,58 @@ def _templates_text(topic: str = "all") -> str:
             "  cairos config ai use-gemini gemini-2.5-flash",
             "  cairos config ai test",
         ],
+        "system": [
+            "System:",
+            "  cairos show disk usage",
+            "  cairos show memory usage",
+            "  cairos list listening ports",
+            "  cairos open project in vscode",
+        ],
+        "wsl": [
+            "WSL:",
+            "  cairos list wsl distros",
+            "  cairos shutdown all wsl distros",
+            "  cairos terminate the wsl distro ISP2025",
+            "  cairos start the wsl distro ISP2025",
+        ],
+        "windows": [
+            "Windows/PowerShell:",
+            "  cairos open current folder in explorer",
+            "  cairos show powershell version",
+            "  cairos show path",
+            "  cairos set gemini api key env",
+        ],
+        "node": [
+            "Node:",
+            "  cairos create node project app",
+            "  cairos create package json",
+            "  cairos npm install",
+            "  cairos npm test",
+        ],
+        "rust": [
+            "Rust:",
+            "  cairos create rust project tool",
+            "  cairos cargo build",
+            "  cairos cargo test",
+        ],
+        "cleanup": [
+            "Cleanup:",
+            "  cairos clean pycache",
+            "  cairos remove node_modules",
+            "  cairos remove build folder",
+            "  cairos clean temporary files",
+        ],
         "files": [
             "Files and folders:",
             "  cairos create folder docs",
             "  cairos create file notes.txt",
             "  cairos create bash script branch_info that prints current git branch and folder",
+            "  cairos create powershell script repo_info that prints current git branch and folder",
         ],
     }
     if topic in sections:
         return "\n".join(sections[topic])
-    order = ["files", "python", "cpp", "git", "ai"]
+    order = ["files", "python", "cpp", "node", "rust", "git", "system", "wsl", "windows", "cleanup", "ai"]
     return "CAIROS deterministic templates\n\n" + "\n\n".join("\n".join(sections[name]) for name in order)
 
 
@@ -619,7 +725,13 @@ def _handle_shell(args: list[str]) -> int:
     if args[:2] == ["install", "zsh"]:
         print("CAIROS zsh shell helper")
         print("No shell files were modified.")
-        print("Add this optional snippet to ~/.zshrc if you want a tiny helper:")
+        print("Optional completion install:")
+        print("  mkdir -p ~/.zfunc")
+        print("  cairos completion zsh > ~/.zfunc/_cairos")
+        print("  echo 'fpath=(~/.zfunc $fpath)' >> ~/.zshrc")
+        print("  echo 'autoload -Uz compinit && compinit' >> ~/.zshrc")
+        print("")
+        print("Add this optional alias snippet to ~/.zshrc if you want a tiny helper:")
         print("")
         print("# CAIROS helper")
         print("alias c='cairos'")
@@ -628,6 +740,9 @@ def _handle_shell(args: list[str]) -> int:
     if args[:2] == ["install", "powershell"]:
         print("CAIROS PowerShell helper")
         print("No PowerShell profile was modified.")
+        print("Optional completion install:")
+        print("  cairos completion powershell | Out-File -Encoding utf8 $PROFILE.CurrentUserAllHosts -Append")
+        print("")
         print("Optional profile snippet:")
         print("")
         print("Set-Alias c cairos")
@@ -718,11 +833,15 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_install_info()
     if command == "quicksetup":
         return _handle_quicksetup()
+    if command == "completion":
+        return _handle_completion(rest)
     if command == "templates":
         return _handle_templates(rest)
     if command == "init":
         return _handle_init(rest)
     if command == "setup":
+        if rest:
+            return _handle_free_task(args)
         return _handle_setup()
     if command == "shell":
         return _handle_shell(rest)
