@@ -1,46 +1,62 @@
 # CAIROS
 
-**CAIROS — Context-Aware Intelligent Runtime Operating Shell**
+**CAIROS - Context-Aware Intelligent Runtime Operating Shell**
 
-CAIROS is a context-aware command assistant that lives inside your normal shell. It is **not** a replacement for zsh, bash or fish. Install the package `cairos-shell` once, then use the `cairos` command from any directory.
+CAIROS is a context-aware command assistant that lives inside your normal shell.
+It is not a replacement for zsh, bash, PowerShell, or fish. Install the package
+once, then use the `cairos` command from any project directory.
 
-```bash
-cairos macke python projekt demo mit venv git pytest
-cairos create cpp header file Player
-cairos make folder docs
-cairos --dry-run create python project demo
-cairos preview create cpp header Player
-cairos diff create cpp header Player
-cairos explain git reset --soft HEAD~1
-cairos config ai use-ollama llama3.1
-cairos config ai use-gemini gemini-2.5-flash
-cairos config ai list-models
-cairos check if repo is ready to commit
-cairos plan create bash script branch_info that prints current git branch and folder
-cairos plan create cpp mini project new_cpp_project with class TestSubject and main
-```
+Package name: `cairos-shell`  
+Command name: `cairos`
 
-CAIROS first tries deterministic templates with typo-tolerant matching. Direct `cairos <task>` only prints a plan; use `cairos run <task>` to execute after confirmation. Only when it cannot solve a request locally does it fall back to a configured AI backend.
-
-## Quick start for development
-
-```bash
-pipx install --editable .
-cairos --version
-make test
-make check
-```
-
-## Install as a console helper
-
-Recommended:
+## TL;DR
 
 ```bash
 pipx install cairos-shell
-cairos setup
+cairos quicksetup
+cd your-project
+cairos doctor
 ```
 
-From GitHub:
+On Windows PowerShell:
+
+```powershell
+py -m pip install --user pipx
+py -m pipx ensurepath
+pipx install cairos-shell
+cairos quicksetup
+```
+
+## Everyday Use
+
+```bash
+cairos check if repo is ready to commit
+cairos plan create bash script branch_info that prints current git branch and folder
+cairos plan create cpp mini project new_cpp_project with class TestSubject and main
+cairos run create folder docs
+```
+
+Direct `cairos <task>` prints a plan. Use `cairos run <task>` to execute after
+confirmation.
+
+CAIROS first tries deterministic templates with typo-tolerant matching. If no
+template can satisfy the request, it can fall back to a configured AI backend.
+
+## Install Options
+
+Recommended user install:
+
+```bash
+pipx install cairos-shell
+```
+
+Development checkout:
+
+```bash
+pipx install --editable .
+```
+
+GitHub install:
 
 ```bash
 pipx install git+https://github.com/<user>/<repo>.git
@@ -52,36 +68,35 @@ Fallback:
 python -m pip install --user cairos-shell
 ```
 
-After installation, `cairos` can be used from any folder.
+## Key Locations
 
-## Local AI setup
+Global config:
 
-```bash
-cairos config ai use-ollama llama3.1
-ollama pull llama3.1
-ollama serve
+```text
+~/.config/cairos/config.json
 ```
 
-## API setup
+History:
 
-```bash
-export OPENAI_API_KEY="your-key"
-cairos config ai use-openai gpt-4.1-mini
+```text
+~/.local/state/cairos/history.jsonl
 ```
 
-Gemini:
+Optional project-local rules:
 
-```bash
-export GEMINI_API_KEY="your-key"
-cairos config ai use-gemini gemini-2.5-flash
-cairos config ai test
+```text
+.cairos/rules.json
 ```
 
-See [`DOCUMENTATION.md`](DOCUMENTATION.md) for full commands, settings and behavior.
+On Windows, CAIROS uses `%APPDATA%\cairos\config.json` and
+`%LOCALAPPDATA%\cairos\history.jsonl`.
 
-Additional references:
+## Documentation
 
-- [`TEMPLATES.md`](TEMPLATES.md) lists deterministic tasks.
-- [`SAFETY.md`](SAFETY.md) explains risk levels and blocked commands.
-- [`AI_SETUP.md`](AI_SETUP.md) covers Ollama, Gemini, OpenAI-compatible APIs and custom commands.
-- [`DEPENDENCIES.md`](DEPENDENCIES.md) lists runtime and optional dependencies.
+- [Quickstart](docs/QUICKSTART.md)
+- [User Guide](docs/USER_GUIDE.md)
+- [AI Setup](docs/AI_SETUP.md)
+- [Safety](docs/SAFETY.md)
+- [Developer Guide](docs/DEVELOPER.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Changelog](CHANGELOG.md)

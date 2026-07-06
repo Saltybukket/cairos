@@ -153,7 +153,14 @@ def _openai_compatible_plan(request: str, config: dict[str, Any]) -> Plan:
     timeout = int(ai.get("timeout_seconds", 60))
     api_key = os.environ.get(key_env)
     if not api_key:
-        raise AIPlannerError(f"Missing API key environment variable: {key_env}")
+        raise AIPlannerError(
+            f"Missing API key environment variable: {key_env}\n\n"
+            "Set it for this shell:\n"
+            f"  export {key_env}=\"your-key\"\n\n"
+            "Then test:\n"
+            "  cairos config ai test\n\n"
+            "For persistent setup, add it to your shell profile or a sourced secrets file."
+        )
     payload = _build_payload(request)
     body = json.dumps(
         {
@@ -189,7 +196,14 @@ def _gemini_plan(request: str, config: dict[str, Any]) -> Plan:
     timeout = int(ai.get("timeout_seconds", 60))
     api_key = os.environ.get(key_env)
     if not api_key:
-        raise AIPlannerError(f"Missing API key environment variable: {key_env}")
+        raise AIPlannerError(
+            f"Missing API key environment variable: {key_env}\n\n"
+            "Set it for this shell:\n"
+            f"  export {key_env}=\"your-key\"\n\n"
+            "Then test:\n"
+            "  cairos config ai test\n\n"
+            "For persistent setup, add it to your shell profile or a sourced secrets file."
+        )
     payload = _build_payload(request)
     prompt = payload["system"] + "\n\n" + json.dumps({"request": request, "context": payload["context"], "rules": payload["rules"]})
     body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.1}}).encode("utf-8")

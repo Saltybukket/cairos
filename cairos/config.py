@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 from pathlib import Path
 from typing import Any
 
@@ -30,9 +31,25 @@ DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 
+def config_dir(system: str | None = None) -> Path:
+    """Return the global CAIROS config directory for the current platform."""
+    system_name = system or platform.system()
+    if system_name == "Windows":
+        return Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming"))) / "cairos"
+    return Path.home() / ".config" / "cairos"
+
+
+def state_dir(system: str | None = None) -> Path:
+    """Return the global CAIROS state directory for the current platform."""
+    system_name = system or platform.system()
+    if system_name == "Windows":
+        return Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "cairos"
+    return Path.home() / ".local" / "state" / "cairos"
+
+
 def config_path() -> Path:
     """Return the global CAIROS config path."""
-    return Path.home() / ".config" / "cairos" / "config.json"
+    return config_dir() / "config.json"
 
 
 def _clone_default() -> dict[str, Any]:

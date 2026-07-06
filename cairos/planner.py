@@ -41,7 +41,7 @@ def make_plan(request: str, allow_ai: bool = True) -> Plan:
                     "Try: cairos config ai use-ollama llama3.1",
                     "Try: cairos config ai use-gemini gemini-2.5-flash",
                     "Try: cairos config ai use-openai gpt-4.1-mini",
-                    "Or add a deterministic template in cairos/templates.py.",
+                    "Or inspect templates: cairos templates",
                 ],
                 source="none",
                 requires_confirmation=False,

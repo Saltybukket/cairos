@@ -1,5 +1,7 @@
 # Developing CAIROS
 
+This file explains contributor setup, checks, architecture, and release steps.
+
 Main modules:
 
 - `cairos/cli.py`: command routing.
@@ -30,3 +32,23 @@ Use match debugging for template work:
 ```bash
 cairos plan --debug-match create a small bash script that prints current folder
 ```
+
+## Release
+
+Install build tooling only when preparing a release:
+
+```bash
+python -m pip install build twine
+make check
+python -m build
+twine check dist/*
+twine upload dist/*
+```
+
+Release checklist:
+
+- Bump version.
+- Update changelog.
+- Run `make secret-check`.
+- Run `make check`.
+- Tag the release.

@@ -1,5 +1,7 @@
 # CAIROS Safety Model
 
+This file explains CAIROS risk levels and confirmation behavior.
+
 CAIROS plans first and executes only through `cairos run ...`.
 
 Risk levels:

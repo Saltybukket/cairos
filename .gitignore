@@ -17,6 +17,8 @@ dist/
 
 # Test output
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 reports/
@@ -25,6 +27,8 @@ reports/
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
 
 # CAIROS local project config may be personal
 .cairos/local.json
+.cairos/rules.json

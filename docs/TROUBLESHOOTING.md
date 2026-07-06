@@ -1,5 +1,7 @@
 # CAIROS Troubleshooting
 
+This file lists common CAIROS setup and usage problems with fixes.
+
 ## `cairos` command not found
 
 Recommended install:
@@ -65,6 +67,15 @@ cairos -- check the commit log and summarize it
 Install inside the WSL distribution where you want to use CAIROS. Windows can
 edit files through the UNC path, but the `cairos` executable should run inside
 WSL for WSL projects.
+
+VS Code may auto-activate a Python `.venv` in terminals. That is unrelated to
+CAIROS installed with pipx. Disable it with:
+
+```json
+{
+  "python.terminal.activateEnvironment": false
+}
+```
 
 ## Shell helper
 

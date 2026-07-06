@@ -5,11 +5,22 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cairos-shell"
 version = "0.3.0"
-description = "Context-Aware Intelligent Runtime Operating Shell"
+description = "Context-aware AI-assisted shell command planner and safety layer"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "CAIROS Developer" }]
 license = { text = "MIT" }
+keywords = ["cli", "shell", "terminal", "assistant", "ai", "developer-tools"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development",
+  "Topic :: System :: Shells",
+]
+
+[project.optional-dependencies]
+dev = []
 
 [project.scripts]
 cairos = "cairos.cli:main"

@@ -305,13 +305,12 @@
       "cairos.cli",
       "config",
       "ai",
-      "use-gemini",
-      "gemini-1.5-flash"
+      "use-gemini"
     ],
     "expected_contains": [
       "Configured Gemini AI",
       "provider=gemini",
-      "model=gemini-1.5-flash",
+      "model=gemini-2.5-flash",
       "api_key_env=GEMINI_API_KEY"
     ],
     "expected_stderr": "",
@@ -917,9 +916,12 @@
       "setup"
     ],
     "expected_contains": [
-      "CAIROS setup",
+      "CAIROS Setup",
+      "Package: cairos-shell",
+      "Command: cairos",
       "Config path:",
       "History path:",
+      "Project rules path:",
       "Recommended install:",
       "pipx install cairos-shell",
       "cairos config ai use-gemini gemini-2.5-flash"
@@ -936,13 +938,14 @@
       "install-info"
     ],
     "expected_contains": [
-      "CAIROS install info",
-      "command path:",
-      "python executable:",
-      "package version:",
-      "config path:",
-      "history path:",
-      "install mode:",
+      "CAIROS Install Info",
+      "Package/distribution: cairos-shell",
+      "Command path:",
+      "Python executable:",
+      "Version:",
+      "Config path:",
+      "History path:",
+      "Install mode:",
       "PATH:"
     ],
     "expected_stderr": "",
@@ -982,7 +985,8 @@
     "expected_contains": [
       "PATH: warning",
       ".local/bin is not on PATH",
-      "Fix for bash/zsh"
+      "Fix for zsh",
+      "Fix for bash"
     ],
     "expected_stderr": "",
     "expected_exit": 0
@@ -1001,6 +1005,108 @@
       "CAIROS zsh shell helper",
       "No shell files were modified",
       "alias c='cairos'"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Templates overview command",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "templates"
+    ],
+    "expected_contains": [
+      "CAIROS deterministic templates",
+      "Python:",
+      "C++:",
+      "Git:",
+      "AI:"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Templates topic commands",
+    "command": [
+      "python3",
+      "-c",
+      "from cairos.cli import main; main(['templates','python']); main(['templates','cpp']); main(['templates','git'])"
+    ],
+    "expected_contains": [
+      "cairos create python project demo with venv git pytest",
+      "cairos create cpp mini project engine with class Player and main",
+      "cairos check if repo is ready to commit"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "No args shows quick start hints",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli"
+    ],
+    "expected_contains": [
+      "Try:",
+      "cairos quicksetup",
+      "cairos --help"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Help shows onboarding commands",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "--help"
+    ],
+    "expected_contains": [
+      "cairos quicksetup",
+      "cairos templates [python|cpp|git|ai]",
+      "cairos shell install zsh|powershell"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Quicksetup shows install and AI guidance",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "quicksetup"
+    ],
+    "expected_contains": [
+      "CAIROS Quicksetup",
+      "package: cairos-shell",
+      "PATH status",
+      "Config locations",
+      "AI setup options",
+      "cairos config ai use-gemini gemini-2.5-flash",
+      "cairos doctor"
+    ],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "PowerShell shell helper is non destructive",
+    "command": [
+      "python3",
+      "-m",
+      "cairos.cli",
+      "shell",
+      "install",
+      "powershell"
+    ],
+    "expected_contains": [
+      "CAIROS PowerShell helper",
+      "No PowerShell profile was modified",
+      "Set-Alias c cairos"
     ],
     "expected_stderr": "",
     "expected_exit": 0

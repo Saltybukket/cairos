@@ -1,5 +1,7 @@
 # CAIROS AI Setup
 
+This file explains optional AI backends for CAIROS.
+
 CAIROS works without AI. Configure a backend only when deterministic templates
 do not cover your workflow.
 

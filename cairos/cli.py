@@ -11,6 +11,7 @@ while everything else is treated as a task and passed to the planner.
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import sys
 from pathlib import Path
@@ -18,6 +19,7 @@ from . import __version__
 from .ai import ai_self_test, list_models
 from .config import (
     ai_status,
+    config_dir,
     config_json,
     config_path,
     configure_gemini,
@@ -26,6 +28,7 @@ from .config import (
     configure_openai,
     disable_ai,
     set_config_value,
+    state_dir,
 )
 from .context import context_json, context_summary
 from .executor import execute_plan
@@ -34,7 +37,7 @@ from .formatter import format_plan
 from .history import append_history, clear_history, format_history, history_path
 from .planner import make_plan
 from .preview import diff_plan, preview_plan
-from .rules import init_global_rules, init_local_rules, rules_json, set_rule
+from .rules import init_global_rules, init_local_rules, local_rules_path, rules_json, set_rule
 from .safety import check_command
 from .text import looks_like_shell_command
 
@@ -69,17 +72,20 @@ Usage:
   cairos rules set <key.path> <value> [--global]
   cairos doctor
   cairos install-info
+  cairos quicksetup
   cairos init [--global]
   cairos setup
-  cairos shell install zsh
+  cairos templates [python|cpp|git|ai]
+  cairos shell install zsh|powershell
   cairos history [last|clear]
 
 Examples:
+  cairos check if repo is ready to commit
+  cairos plan create python project demo with venv git pytest
+  cairos run create folder docs
+  cairos config ai use-gemini gemini-2.5-flash
   cairos macke python projekt testapp mit venv git pytest
   cairos create cpp header file Player
-  cairos make folder docs
-  cairos finish current branch and prepare push to origin main
-  cairos explain git reset --soft HEAD~1
 """
 
 
@@ -114,6 +120,20 @@ def _without_flags(args: list[str], flags: set[str]) -> list[str]:
 
 def _print_help() -> int:
     print(USAGE)
+    return 0
+
+
+def _print_try_help() -> int:
+    print("CAIROS — Context-Aware Intelligent Runtime Operating Shell")
+    print("")
+    print("Try:")
+    print("  cairos quicksetup")
+    print("  cairos doctor")
+    print("  cairos check if repo is ready to commit")
+    print("  cairos plan create python project demo with venv git pytest")
+    print("")
+    print("Run:")
+    print("  cairos --help")
     return 0
 
 
@@ -350,9 +370,13 @@ def _handle_rules(args: list[str]) -> int:
 def _handle_doctor() -> int:
     print("CAIROS Doctor")
     print(f"version: {__version__}")
+    print(f"platform: {platform.system() or 'unknown'}")
+    print(f"shell guess: {_shell_guess()}")
     print(f"python: {sys.version.split()[0]}")
     print(f"executable: {sys.executable}")
     print(f"config path: {config_path()}")
+    print(f"history path: {history_path()}")
+    print(f"command path: {shutil.which('cairos') or '<not found on PATH>'}")
     print(ai_status())
     print("AI hints:")
     print("- Run `cairos config ai test` to verify the configured backend.")
@@ -366,6 +390,9 @@ def _handle_doctor() -> int:
 
 def _user_bin_path() -> Path:
     """Return the common user-level script directory."""
+    if platform.system() == "Windows":
+        scripts = Path.home() / "AppData" / "Roaming" / "Python" / "Scripts"
+        return Path(os.environ.get("PIPX_BIN_DIR", str(scripts)))
     return Path.home() / ".local" / "bin"
 
 
@@ -389,30 +416,68 @@ def _install_mode() -> str:
     return "unknown"
 
 
+def _shell_guess() -> str:
+    """Return a friendly guess for the user's shell."""
+    if platform.system() == "Windows":
+        parent = os.environ.get("PSModulePath")
+        return "powershell" if parent else "cmd/powershell"
+    shell = Path(os.environ.get("SHELL", "")).name
+    return shell or "unknown"
+
+
+def _running_from_source() -> bool:
+    """Return True when CAIROS module files live under the current checkout."""
+    module_path = Path(__file__).resolve()
+    cwd = Path.cwd().resolve()
+    return cwd == module_path or cwd in module_path.parents
+
+
 def _path_status_lines() -> list[str]:
     user_bin = _user_bin_path()
     if _path_contains(user_bin):
         return [f"PATH: ok ({user_bin} is visible)"]
+    if platform.system() == "Windows":
+        return [
+            f"PATH: warning ({user_bin} is not on PATH)",
+            "Fix for PowerShell:",
+            "  py -m pipx ensurepath",
+            "  restart your terminal",
+        ]
     return [
         f"PATH: warning ({user_bin} is not on PATH)",
-        "Fix for bash/zsh:",
-        f"  echo 'export PATH=\"$PATH:{user_bin}\"' >> ~/.profile",
-        "  restart your terminal",
+        "Fix for zsh:",
+        "  echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc",
+        "  source ~/.zshrc",
+        "Fix for bash:",
+        "  echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
+        "  source ~/.bashrc",
     ]
 
 
 def _install_info() -> str:
     """Return end-user installation diagnostics."""
+    command_path = shutil.which("cairos")
+    command_dir = str(Path(command_path).parent) if command_path else ""
     lines = [
-        "CAIROS install info",
-        f"command path: {shutil.which('cairos') or '<not found on PATH>'}",
-        f"python executable: {sys.executable}",
-        f"package version: {__version__}",
-        f"config path: {config_path()}",
-        f"history path: {history_path()}",
-        f"install mode: {_install_mode()}",
+        "CAIROS Install Info",
+        "Package/distribution: cairos-shell",
+        "Command: cairos",
+        f"Version: {__version__}",
+        f"Platform: {platform.system() or 'unknown'}",
+        f"Shell guess: {_shell_guess()}",
+        f"Command path: {command_path or '<not found on PATH>'}",
+        f"Python executable: {sys.executable}",
+        f"Python version: {sys.version.split()[0]}",
+        f"Install mode: {_install_mode()}",
+        f"Running from source checkout: {'yes' if _running_from_source() else 'no'}",
+        f"Source path: {Path(__file__).resolve().parents[1]}",
+        f"Config path: {config_path()}",
+        f"History path: {history_path()}",
+        f"PATH includes command dir: {'yes' if command_dir and _path_contains(Path(command_dir)) else 'no'}",
     ]
     lines.extend(_path_status_lines())
+    lines.append("Use `cairos setup` for guided setup.")
+    lines.append("Use `cairos doctor` for environment diagnostics.")
     return "\n".join(lines)
 
 
@@ -436,12 +501,22 @@ def _handle_init(args: list[str]) -> int:
 
 
 def _handle_setup() -> int:
-    print("CAIROS setup")
+    print("CAIROS Setup")
+    print("Package: cairos-shell")
+    print("Command: cairos")
+    print(f"Version: {__version__}")
+    print(f"Platform: {platform.system() or 'unknown'}")
+    print(f"Shell guess: {_shell_guess()}")
+    print(f"Command path: {shutil.which('cairos') or '<not found on PATH>'}")
     print(f"Config path: {config_path()}")
     print(f"History path: {history_path()}")
+    print(f"Project rules path: {local_rules_path()}")
     for line in _path_status_lines():
         print(line)
     print(ai_status())
+    print("Behavior:")
+    print("- Direct `cairos <task>` only prints a plan.")
+    print("- Use `cairos run <task>` to execute after confirmation.")
     print("Recommended install:")
     print("- pipx install cairos-shell")
     print("Useful next commands:")
@@ -455,6 +530,91 @@ def _handle_setup() -> int:
     return 0
 
 
+def _handle_quicksetup() -> int:
+    is_windows = platform.system() == "Windows"
+    print("CAIROS Quicksetup")
+    print("")
+    print("1. Install status")
+    print("   package: cairos-shell")
+    print("   command: cairos")
+    print(f"   version: {__version__}")
+    print(f"   command path: {shutil.which('cairos') or '<not found on PATH>'}")
+    print("")
+    print("2. PATH status")
+    for line in _path_status_lines():
+        print(f"   {line}")
+    print("")
+    print("3. Config locations")
+    print(f"   config: {config_path()}")
+    print(f"   history: {history_path()}")
+    print(f"   project rules: {local_rules_path()}")
+    print("")
+    print("4. AI setup options")
+    print("   no AI:")
+    print("     cairos config ai disable")
+    print("   Gemini:")
+    if is_windows:
+        print('     setx GEMINI_API_KEY "your-key"')
+        print('     $env:GEMINI_API_KEY="your-key"')
+    else:
+        print('     export GEMINI_API_KEY="your-key"')
+    print("     cairos config ai use-gemini gemini-2.5-flash")
+    print("   Ollama:")
+    print("     ollama pull llama3.1")
+    print("     cairos config ai use-ollama llama3.1")
+    print("")
+    print("5. Try it")
+    print("   cairos doctor")
+    print("   cairos context")
+    print("   cairos check if repo is ready to commit")
+    return 0
+
+
+def _templates_text(topic: str = "all") -> str:
+    sections = {
+        "python": [
+            "Python:",
+            "  cairos create python project demo with venv git pytest",
+            "  cairos create requirements file",
+            "  cairos add pytest",
+        ],
+        "cpp": [
+            "C++:",
+            "  cairos create cpp header Player",
+            "  cairos create cpp mini project engine with class Player and main",
+            "  cairos create cpp project engine with cmake",
+        ],
+        "git": [
+            "Git:",
+            "  cairos git summary",
+            "  cairos check if repo is ready to commit",
+            "  cairos check if repo is ready to push",
+        ],
+        "ai": [
+            "AI:",
+            "  cairos config ai use-ollama llama3.1",
+            "  cairos config ai use-gemini gemini-2.5-flash",
+            "  cairos config ai test",
+        ],
+        "files": [
+            "Files and folders:",
+            "  cairos create folder docs",
+            "  cairos create file notes.txt",
+            "  cairos create bash script branch_info that prints current git branch and folder",
+        ],
+    }
+    if topic in sections:
+        return "\n".join(sections[topic])
+    order = ["files", "python", "cpp", "git", "ai"]
+    return "CAIROS deterministic templates\n\n" + "\n\n".join("\n".join(sections[name]) for name in order)
+
+
+def _handle_templates(args: list[str]) -> int:
+    topic = args[0].lower() if args else "all"
+    print(_templates_text(topic))
+    return 0
+
+
 def _handle_shell(args: list[str]) -> int:
     if args[:2] == ["install", "zsh"]:
         print("CAIROS zsh shell helper")
@@ -465,7 +625,15 @@ def _handle_shell(args: list[str]) -> int:
         print("alias c='cairos'")
         print("# Try: c setup")
         return 0
-    print("Unknown shell command. Try: cairos shell install zsh", file=sys.stderr)
+    if args[:2] == ["install", "powershell"]:
+        print("CAIROS PowerShell helper")
+        print("No PowerShell profile was modified.")
+        print("Optional profile snippet:")
+        print("")
+        print("Set-Alias c cairos")
+        print("# Try: c quicksetup")
+        return 0
+    print("Unknown shell command. Try: cairos shell install zsh or cairos shell install powershell", file=sys.stderr)
     return 1
 
 
@@ -503,7 +671,10 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point used by the installed ``cairos`` console command."""
     args = list(sys.argv[1:] if argv is None else argv)
 
-    if not args or args[0] in {"-h", "--help", "help"}:
+    if not args:
+        return _print_try_help()
+
+    if args[0] in {"-h", "--help", "help"}:
         return _print_help()
 
     if args[0] == "--version":
@@ -545,6 +716,10 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_doctor()
     if command == "install-info":
         return _handle_install_info()
+    if command == "quicksetup":
+        return _handle_quicksetup()
+    if command == "templates":
+        return _handle_templates(rest)
     if command == "init":
         return _handle_init(rest)
     if command == "setup":

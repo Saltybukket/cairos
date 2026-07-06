@@ -12,10 +12,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .config import state_dir
+
 
 def history_path() -> Path:
     """Return the global history file path."""
-    return Path.home() / ".local" / "state" / "cairos" / "history.jsonl"
+    return state_dir() / "history.jsonl"
 
 
 def append_history(request: str, source: str, risk: str, executed: bool, exit_code: int, cwd: str | None = None) -> Path:
