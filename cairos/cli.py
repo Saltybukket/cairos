@@ -14,6 +14,7 @@ import os
 import platform
 import shutil
 import sys
+import getpass
 from pathlib import Path
 from . import __version__
 from .ai import ai_self_test, list_models
@@ -49,6 +50,7 @@ from .executor import execute_plan
 from .explain import explain_command
 from .formatter import format_plan
 from .history import append_history, clear_history, format_history, history_path
+from .keys import key_status, require_valid_env_var_name, setup_commands
 from .planner import make_plan
 from .preview import diff_plan, preview_plan
 from .rules import init_global_rules, init_local_rules, local_rules_path, rules_json, set_rule
@@ -302,6 +304,13 @@ Fallback:
   cairos config ai fallback disable
   cairos config ai fallback order openrouter-free gemini-flash groq-llama
 
+API keys:
+  cairos config ai key status OPENROUTER_API_KEY
+  cairos config ai key set OPENROUTER_API_KEY
+  cairos config ai key reveal OPENROUTER_API_KEY
+  cairos config ai key reveal OPENROUTER_API_KEY --raw --yes
+  cairos config ai key commands OPENROUTER_API_KEY --shell powershell
+
 Never store raw API keys in CAIROS config. Store only environment variable names."""
 
 
@@ -489,6 +498,81 @@ def _handle_ai_fallback(args: list[str]) -> int:
     return 1
 
 
+def _confirm_secret_reveal(yes: bool) -> bool:
+    if yes:
+        return True
+    if not sys.stdin.isatty():
+        print("Refusing to print an API key without --yes in a non-interactive shell.", file=sys.stderr)
+        return False
+    answer = input('This will print the API key value to your terminal. Do not run this while screen sharing. Type "reveal" to continue: ').strip()
+    return answer == "reveal"
+
+
+def _handle_ai_key(args: list[str]) -> int:
+    if not args or args[0] in {"-h", "--help", "help"}:
+        print("Usage:")
+        print("  cairos config ai key status ENV_VAR_NAME")
+        print("  cairos config ai key set ENV_VAR_NAME")
+        print("  cairos config ai key reveal ENV_VAR_NAME [--raw] [--yes]")
+        print("  cairos config ai key print ENV_VAR_NAME [--raw] [--yes]")
+        print("  cairos config ai key commands ENV_VAR_NAME [--shell bash|zsh|powershell|cmd|auto] [--include-current-value] [--yes]")
+        return 0
+    command = args[0]
+    env_name = args[1] if len(args) >= 2 else ""
+    try:
+        env_name = require_valid_env_var_name(env_name)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    if command == "status":
+        print(f"{env_name}: {key_status(env_name)}")
+        return 0
+    if command == "set":
+        if not sys.stdin.isatty():
+            print("Interactive key set requires a terminal.", file=sys.stderr)
+            return 1
+        value = getpass.getpass(f"Enter value for {env_name}: ")
+        if not value:
+            print("No value entered.", file=sys.stderr)
+            return 1
+        os.environ[env_name] = value
+        print(f"Set {env_name} for this CAIROS process only.")
+        print(f"To make it available in new terminals, run: cairos config ai key commands {env_name} --shell auto")
+        return 0
+    if command in {"reveal", "print"}:
+        value = os.environ.get(env_name)
+        if not value:
+            print(f"{env_name} is not set in this environment.")
+            return 1
+        yes = "--yes" in args
+        raw = "--raw" in args
+        if not _confirm_secret_reveal(yes):
+            print("Aborted.", file=sys.stderr)
+            return 130
+        print(value if raw else f"{env_name}={value}")
+        return 0
+    if command == "commands":
+        shell = _extract_flag_value(args, "--shell", "auto")
+        include_current = "--include-current-value" in args
+        value = "your-key"
+        if include_current:
+            current = os.environ.get(env_name)
+            if not current:
+                print(f"{env_name} is not set in this environment.", file=sys.stderr)
+                return 1
+            if not _confirm_secret_reveal("--yes" in args):
+                print("Aborted.", file=sys.stderr)
+                return 130
+            value = current
+            print("These commands contain your secret API key. Do not paste them into chats, issues, logs, or screenshots.")
+            print("")
+        for line in setup_commands(env_name, shell=shell, value=value):
+            print(line)
+        return 0
+    print("Unknown key command.", file=sys.stderr)
+    return 1
+
+
 def _print_unknown_ai_command(command: str) -> int:
     print(f"Unknown AI config command: {command}", file=sys.stderr)
     print("", file=sys.stderr)
@@ -656,6 +740,9 @@ def _handle_config_ai(args: list[str]) -> int:
 
     if args[0] == "fallback":
         return _handle_ai_fallback(args[1:])
+
+    if args[0] == "key":
+        return _handle_ai_key(args[1:])
 
     if args[0] == "list-providers":
         _print_provider_list()

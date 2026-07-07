@@ -30,6 +30,16 @@ PowerShell persistent:
 # restart terminal
 ```
 
+CAIROS can generate exact Windows setup commands:
+
+```powershell
+cairos config ai key commands OPENROUTER_API_KEY --shell powershell
+cairos config ai key commands OPENROUTER_API_KEY --shell cmd
+```
+
+Persistent environment changes require a new terminal before child processes
+can see them.
+
 ## Command Differences
 
 | Intent | cmd.exe | PowerShell | Unix/WSL |

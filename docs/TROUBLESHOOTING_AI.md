@@ -22,6 +22,20 @@ Key missing, invalid, expired, restricted, or not allowed for this model/endpoin
 Check the env var in the current shell, regenerate the key, and verify account,
 org or project permissions.
 
+Use helper commands to avoid mixing up the environment variable name and the
+secret value:
+
+```bash
+cairos config ai key status OPENROUTER_API_KEY
+cairos config ai key commands OPENROUTER_API_KEY --shell auto
+```
+
+Only use reveal when you intentionally want the value printed locally:
+
+```bash
+cairos config ai key reveal OPENROUTER_API_KEY
+```
+
 402:
 
 ```text

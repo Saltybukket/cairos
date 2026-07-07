@@ -7,7 +7,7 @@
       <h2 class="section-title">OpenRouter Free</h2>
       <input type="hidden" name="token" value="{{ token }}">
       <label class="field-label">Profile name<input class="field" name="profile_name" value="openrouter-free"></label>
-      <div class="hint">OPENROUTER_API_KEY: {{ "available" if state.profiles | selectattr("api_key_env", "equalto", "OPENROUTER_API_KEY") | list else "configure in shell" }}</div>
+      <div class="hint">Key variable: OPENROUTER_API_KEY. Do not paste the real key here.</div>
       <button class="primary-button">Create Profile</button>
     </form>
     <form class="panel space-y-3" hx-post="/profiles/create/gemini" hx-target="#provider-panel" hx-swap="outerHTML">
@@ -15,7 +15,8 @@
       <input type="hidden" name="token" value="{{ token }}">
       <label class="field-label">Profile name<input class="field" name="profile_name" value="gemini-flash"></label>
       <label class="field-label">Model<input class="field" name="model" value="gemini-2.5-flash"></label>
-      <label class="field-label">API key env<input class="field" name="api_key_env" value="GEMINI_API_KEY"></label>
+      <label class="field-label">Environment variable name<input class="field" name="api_key_env" value="GEMINI_API_KEY"></label>
+      <div class="hint">Example: GEMINI_API_KEY. Do not paste your API key here; this field is only the variable name.</div>
       <button class="primary-button">Create Profile</button>
     </form>
     <form class="panel space-y-3" hx-post="/profiles/create/groq" hx-target="#provider-panel" hx-swap="outerHTML">
@@ -23,7 +24,8 @@
       <input type="hidden" name="token" value="{{ token }}">
       <label class="field-label">Profile name<input class="field" name="profile_name" value="groq-llama"></label>
       <label class="field-label">Model<input class="field" name="model" value="llama-3.1-8b-instant"></label>
-      <label class="field-label">API key env<input class="field" name="api_key_env" value="GROQ_API_KEY"></label>
+      <label class="field-label">Environment variable name<input class="field" name="api_key_env" value="GROQ_API_KEY"></label>
+      <div class="hint">Example: GROQ_API_KEY. Do not paste your API key here; this field is only the variable name.</div>
       <button class="primary-button">Create Profile</button>
     </form>
     <form class="panel space-y-3" hx-post="/profiles/create/openai" hx-target="#provider-panel" hx-swap="outerHTML">
@@ -32,7 +34,8 @@
       <label class="field-label">Profile name<input class="field" name="profile_name" value="openai-mini"></label>
       <label class="field-label">Model<input class="field" name="model" value="gpt-4.1-mini"></label>
       <label class="field-label">Endpoint<input class="field" name="endpoint" value="https://api.openai.com/v1"></label>
-      <label class="field-label">API key env<input class="field" name="api_key_env" value="OPENAI_API_KEY"></label>
+      <label class="field-label">Environment variable name<input class="field" name="api_key_env" value="OPENAI_API_KEY"></label>
+      <div class="hint">Example: OPENAI_API_KEY. Do not paste your API key here; this field is only the variable name.</div>
       <button class="primary-button">Create Profile</button>
     </form>
     <form class="panel space-y-3" hx-post="/profiles/create/ollama" hx-target="#provider-panel" hx-swap="outerHTML">
@@ -52,4 +55,3 @@ export OPENAI_API_KEY="your-key"</pre>
     </div>
   </div>
 </section>
-

@@ -9,6 +9,7 @@ from unittest.mock import patch
 from cairos.cli import main
 from cairos.config import active_ai_profile_name, ai_fallback_settings, ai_profiles, configure_gemini, configure_openai
 from cairos.gui import actions
+from cairos.keys import validate_env_var_name
 from cairos.gui.security import mask_secret_text, same_origin, token_matches
 from cairos.gui.server import check_gui_support, dependency_status
 from cairos.gui.state import load_gui_state
@@ -45,6 +46,28 @@ class GuiStateActionTests(unittest.TestCase):
             result = actions.switch_profile("openrouter-free")
             self.assertTrue(result.ok)
             self.assertEqual(active_ai_profile_name(), "openrouter-free")
+
+    def test_profile_edit_validation(self):
+        home = self.with_home()
+        with patch.dict(os.environ, {"HOME": home}, clear=False):
+            actions.create_openrouter_free_profile()
+            result = actions.edit_profile("openrouter-free", "openrouter-free", "openrouter/free", "https://openrouter.ai/api/v1", "sk-or-v1-fake")
+            self.assertFalse(result.ok)
+            result = actions.edit_profile("openrouter-free", "openrouter-edited", "openrouter/free", "https://openrouter.ai/api/v1", "OPENROUTER_EDITED_KEY")
+            self.assertTrue(result.ok)
+            self.assertIn("openrouter-edited", ai_profiles())
+            self.assertEqual(ai_profiles()["openrouter-edited"]["api_key_env"], "OPENROUTER_EDITED_KEY")
+
+    def test_session_key_set_does_not_return_secret(self):
+        with patch.dict(os.environ, {}, clear=False):
+            result = actions.set_session_key("OPENROUTER_API_KEY", "test-secret-value")
+            self.assertTrue(result.ok)
+            self.assertEqual(os.environ.get("OPENROUTER_API_KEY"), "test-secret-value")
+            self.assertNotIn("test-secret-value", result.message)
+
+    def test_env_var_validation_rejects_raw_key_looking_values(self):
+        ok, _ = validate_env_var_name("sk-or-v1-fake")
+        self.assertFalse(ok)
 
     def test_fallback_toggle_and_order(self):
         home = self.with_home()
@@ -170,6 +193,58 @@ class GuiRouteTests(unittest.TestCase):
         response = client.post("/config/backup", data={"token": "test-token"})
         self.assertEqual(response.status_code, 200)
         self.assertIn("backup", response.text.lower())
+
+    def test_key_session_and_reveal_routes(self):
+        home = self.with_home()
+        client = self.make_client(home)
+        with patch.dict(os.environ, {"HOME": home}, clear=False):
+            response = client.get("/partials/profiles")
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn("test-secret-value", response.text)
+            response = client.post(
+                "/keys/session",
+                data={"token": "test-token", "env_var_name": "OPENROUTER_API_KEY", "api_key_value": "test-secret-value"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Key value set for OPENROUTER_API_KEY", response.text)
+            self.assertNotIn("test-secret-value", response.text)
+            response = client.post(
+                "/keys/reveal",
+                data={"token": "wrong", "env_var_name": "OPENROUTER_API_KEY", "confirm_reveal": "true"},
+            )
+            self.assertEqual(response.status_code, 403)
+            response = client.post(
+                "/keys/reveal",
+                data={"token": "test-token", "env_var_name": "OPENROUTER_API_KEY"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn("test-secret-value", response.text)
+            response = client.post(
+                "/keys/reveal",
+                data={"token": "test-token", "env_var_name": "OPENROUTER_API_KEY", "confirm_reveal": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("test-secret-value", response.text)
+
+    def test_profile_edit_route(self):
+        home = self.with_home()
+        client = self.make_client(home)
+        with patch.dict(os.environ, {"HOME": home}, clear=False):
+            client.post("/profiles/create/openrouter-free", data={"token": "test-token", "profile_name": "openrouter-free"})
+            response = client.post(
+                "/profiles/edit",
+                data={
+                    "token": "test-token",
+                    "profile_name": "openrouter-free",
+                    "new_profile_name": "openrouter-edited",
+                    "model": "openrouter/free",
+                    "endpoint": "https://openrouter.ai/api/v1",
+                    "api_key_env": "OPENROUTER_EDITED_KEY",
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Updated AI profile", response.text)
+            self.assertIn("OPENROUTER_EDITED_KEY", response.text)
 
 
 if __name__ == "__main__":

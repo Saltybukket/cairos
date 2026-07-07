@@ -26,7 +26,7 @@ pipx install "cairos-shell[gui]"
 Editable development install:
 
 ```bash
-python -m pip install -e ".[gui]"
+python -m pip install -e ".[gui,dev]"
 ```
 
 ## Launch
@@ -63,15 +63,24 @@ It exits without starting a long-running server.
 - The GUI does not execute arbitrary shell commands.
 - Raw API keys are never stored or displayed.
 
-The GUI may show `OPENROUTER_API_KEY: available`, but it never prints the
-environment variable value.
+The GUI field "Environment variable name" is not the API key. It stores a name
+such as `OPENROUTER_API_KEY`. Use the API Key Setup section to set the real key
+for the current GUI session or generate terminal commands.
+
+Actual key values are hidden by default. Use Reveal key only when you
+intentionally want to display or copy the current environment value. Revealed
+keys appear on screen and should not be exposed during screen sharing.
+
+Current-session key setup affects only the running GUI process. Persistent
+shell or OS setup may require opening a new terminal.
 
 ## Pages
 
 - Overview: version, command path, config path, history path, project rules,
   platform, shell, active profile, fallback status.
 - AI Profiles: saved profiles, active marker, provider, model, endpoint, key
-  environment variable availability, activate action.
+  variable status, profile edit forms, reveal action, and current-session key
+  setup.
 - Add Provider: OpenRouter free, Gemini, Groq, OpenAI-compatible, and Ollama
   profile forms.
 - Fallback: auto fallback, persisted switch behavior, fallback order.
@@ -81,6 +90,10 @@ environment variable value.
 ## Supported Actions
 
 - switch active profile
+- edit profile name, model, endpoint, and environment variable name
+- set a real key value for the current GUI session
+- generate shell setup commands with a placeholder or explicit pasted value
+- reveal a current environment key value only after an explicit POST action
 - create OpenRouter free profile
 - create Gemini profile
 - create Groq profile

@@ -8,6 +8,39 @@ do not cover your workflow.
 See also: `docs/AI_PROVIDERS.md`, `docs/TROUBLESHOOTING_AI.md` and
 `docs/WINDOWS.md`.
 
+## API Key Concepts
+
+CAIROS separates two things:
+
+1. The environment variable name, for example `OPENROUTER_API_KEY`.
+2. The actual secret API key value.
+
+CAIROS profiles store only the environment variable name. The real key lives in
+your shell or operating system environment. The GUI and CLI can reveal or print
+a key value only when you explicitly ask for it.
+
+## Recommended Setup Flow
+
+1. Create or select a provider profile.
+2. Choose or accept the suggested environment variable name.
+3. Set the actual API key value in your terminal or through the local GUI.
+4. Reveal or print the key only when you intentionally need to copy or debug it.
+5. Restart the terminal if you used persistent environment commands.
+6. Run `cairos config ai test`.
+
+Helpful CLI commands:
+
+```bash
+cairos config ai key status OPENROUTER_API_KEY
+cairos config ai key commands OPENROUTER_API_KEY --shell bash
+cairos config ai key commands OPENROUTER_API_KEY --shell powershell
+cairos config ai key reveal OPENROUTER_API_KEY
+cairos config ai key reveal OPENROUTER_API_KEY --raw --yes
+```
+
+Reveal and print commands intentionally display secrets in your terminal. Do not
+paste that output into chats, issues, logs, or screenshots.
+
 ## OpenRouter Free
 
 ```bash

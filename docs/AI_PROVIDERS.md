@@ -17,6 +17,27 @@ flows through `cairos gui`; see `docs/GUI.md`.
 | Hugging Face Inference Providers | `https://router.huggingface.co/v1` | `HF_TOKEN` | OpenAI-compatible chat endpoint for supported chat completion tasks. Experimental in CAIROS docs. |
 | Ollama | `http://localhost:11434` | none | Local provider. Run `ollama serve` and pull a model first. |
 
+## Key Setup Helpers
+
+Use `cairos config ai key commands` to generate terminal-specific setup
+commands without storing secrets in CAIROS config:
+
+```bash
+cairos config ai key commands OPENROUTER_API_KEY --shell bash
+cairos config ai key commands OPENROUTER_API_KEY --shell powershell
+cairos config ai key commands OPENROUTER_API_KEY --shell cmd
+```
+
+Commands use `your-key` by default. To include a current environment value, you
+must explicitly ask:
+
+```bash
+cairos config ai key commands OPENROUTER_API_KEY --shell powershell --include-current-value --yes
+```
+
+`key status` never prints values. `key reveal` and `key print` do print values,
+but only through explicit commands and confirmation.
+
 ## OpenRouter Free
 
 cmd.exe:

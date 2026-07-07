@@ -3,9 +3,48 @@
   <div class="flex items-end justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold">AI Profiles</h1>
-      <p class="text-sm text-zinc-600">Environment variables are shown by name and availability only.</p>
+      <p class="text-sm text-zinc-600">Profiles store environment variable names, never raw API key values.</p>
     </div>
     <button class="secondary-button" hx-get="/partials/provider-setup" hx-target="#main-panel" hx-swap="innerHTML">Add Provider</button>
+  </div>
+  <div class="mt-6 grid gap-4 xl:grid-cols-[1fr_1fr]">
+    <form class="panel space-y-3" hx-post="/keys/session" hx-target="#profiles-panel" hx-swap="outerHTML">
+      <h2 class="section-title">API Key Setup</h2>
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label">Environment variable name
+        <input class="field" name="env_var_name" value="OPENROUTER_API_KEY">
+      </label>
+      <div class="hint">Example: OPENROUTER_API_KEY. Do not paste your API key here; this field is only the variable name.</div>
+      <label class="field-label">API key value
+        <input class="field" name="api_key_value" type="password" autocomplete="off" placeholder="Paste the real key to set this GUI session">
+      </label>
+      <div class="hint">CAIROS will not store this value in config. Current-session setup affects only this running GUI process.</div>
+      <button class="primary-button">Set For GUI Session</button>
+    </form>
+    <form class="panel space-y-3" hx-post="/keys/commands" hx-target="#profiles-panel" hx-swap="outerHTML">
+      <h2 class="section-title">Shell Setup Commands</h2>
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label">Environment variable name
+        <input class="field" name="env_var_name" value="OPENROUTER_API_KEY">
+      </label>
+      <label class="field-label">Terminal
+        <select class="field" name="shell">
+          <option value="auto">Auto</option>
+          <option value="bash">Bash/zsh/WSL</option>
+          <option value="powershell">PowerShell</option>
+          <option value="cmd">cmd.exe</option>
+        </select>
+      </label>
+      <label class="field-label">API key value
+        <input class="field" name="api_key_value" type="password" autocomplete="off" placeholder="Optional; placeholder commands are safer">
+      </label>
+      <label class="field-label flex items-center gap-2">
+        <input type="checkbox" name="include_value" value="true">
+        Include my pasted key in the generated commands
+      </label>
+      <div class="hint">Unchecked commands use the placeholder your-key. If checked, the output contains your secret.</div>
+      <button class="secondary-button">Generate Commands</button>
+    </form>
   </div>
   <div class="mt-6 overflow-x-auto rounded-md border border-zinc-200 bg-white">
     <table class="min-w-full text-left text-sm">
@@ -16,8 +55,8 @@
           <th class="px-4 py-3">Provider</th>
           <th class="px-4 py-3">Model</th>
           <th class="px-4 py-3">Endpoint</th>
-          <th class="px-4 py-3">API key env</th>
-          <th class="px-4 py-3">Key</th>
+          <th class="px-4 py-3">Key variable</th>
+          <th class="px-4 py-3">Key status</th>
           <th class="px-4 py-3">Actions</th>
         </tr>
       </thead>
@@ -43,6 +82,29 @@
               <button class="table-button">Activate</button>
             </form>
             {% endif %}
+            {% if profile.api_key_env and not profile.local %}
+            <form class="mt-2 inline" hx-post="/keys/reveal" hx-target="#reveal-{{ profile.name }}" hx-swap="innerHTML">
+              <input type="hidden" name="token" value="{{ token }}">
+              <input type="hidden" name="env_var_name" value="{{ profile.api_key_env }}">
+              <input type="hidden" name="confirm_reveal" value="true">
+              <button class="table-button">Reveal key</button>
+            </form>
+            <div id="reveal-{{ profile.name }}"></div>
+            {% endif %}
+          </td>
+        </tr>
+        <tr class="bg-zinc-50">
+          <td class="px-4 py-3" colspan="8">
+            <form class="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_1.4fr_auto]" hx-post="/profiles/edit" hx-target="#profiles-panel" hx-swap="outerHTML">
+              <input type="hidden" name="token" value="{{ token }}">
+              <input type="hidden" name="profile_name" value="{{ profile.name }}">
+              <label class="field-label">Profile name<input class="field" name="new_profile_name" value="{{ profile.name }}"></label>
+              <label class="field-label">Model<input class="field" name="model" value="{{ profile.model }}"></label>
+              <label class="field-label">Environment variable name<input class="field" name="api_key_env" value="{{ profile.api_key_env }}"></label>
+              <label class="field-label">Endpoint<input class="field" name="endpoint" value="{{ profile.endpoint }}"></label>
+              <div class="self-end"><button class="table-button">Save edit</button></div>
+            </form>
+            <div class="hint mt-2">Environment variable name example: OPENROUTER_API_KEY. Do not paste your API key into this field.</div>
           </td>
         </tr>
         {% else %}
@@ -52,4 +114,3 @@
     </table>
   </div>
 </section>
-

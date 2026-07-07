@@ -13,6 +13,8 @@ This file records notable CAIROS changes by release.
   checks, and PyPI-ready release documentation.
 - Made GUI TestClient dependencies explicit in the development extra and CI
   install, while keeping normal CLI and GUI runtime installs lightweight.
+- Improved AI key setup UX with clearer environment-variable terminology,
+  GUI profile editing, explicit key reveal/session setup, and CLI key helpers.
 
 ## 0.5.0a2
 

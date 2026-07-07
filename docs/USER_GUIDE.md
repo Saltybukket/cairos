@@ -357,6 +357,17 @@ cairos config ai test
 CAIROS reports whether an API key environment variable exists, but never prints
 the key value. Profiles store only environment variable names, never raw keys.
 
+Key helpers:
+
+```bash
+cairos config ai key status OPENROUTER_API_KEY
+cairos config ai key commands OPENROUTER_API_KEY --shell auto
+cairos config ai key reveal OPENROUTER_API_KEY
+```
+
+`key reveal` and `key print` intentionally display secrets only through
+explicit commands and confirmation.
+
 ## Shell Helpers
 
 Shell helper commands are conservative:

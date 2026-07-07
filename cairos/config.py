@@ -363,6 +363,25 @@ def rename_ai_profile(old: str, new: str) -> Path:
     return save_config(config)
 
 
+def update_ai_profile(name: str, new_name: str, model: str, endpoint: str, api_key_env: str) -> Path:
+    """Update editable fields for an existing AI profile."""
+    config = load_config()
+    old_name = _sanitize_profile_name(name)
+    target_name = _sanitize_profile_name(new_name or name)
+    profiles = config.setdefault("ai_profiles", {})
+    if old_name not in profiles:
+        raise KeyError(old_name)
+    profile = dict(profiles.pop(old_name))
+    profile["model"] = model
+    profile["endpoint"] = endpoint
+    profile["api_key_env"] = api_key_env
+    profiles[target_name] = _profile_from_ai(profile)
+    if config.get("active_ai_profile") == old_name:
+        config["active_ai_profile"] = target_name
+        config["ai"].update(profiles[target_name])
+    return save_config(config)
+
+
 def ai_profiles() -> dict[str, dict[str, Any]]:
     config = load_config()
     return config.setdefault("ai_profiles", {})

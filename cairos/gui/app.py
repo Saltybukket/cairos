@@ -93,6 +93,20 @@ def create_app(session_token: str, debug: bool = False) -> Any:
         form = await require_post_token(request)
         return await handle_action(request, actions.switch_profile, "partials/profiles.html", profile_name=str(form.get("profile_name") or ""))
 
+    @app.post("/profiles/edit", response_class=HTMLResponse)
+    async def edit_profile(request: Request) -> HTMLResponse:
+        form = await require_post_token(request)
+        return await handle_action(
+            request,
+            actions.edit_profile,
+            "partials/profiles.html",
+            profile_name=str(form.get("profile_name") or ""),
+            new_profile_name=str(form.get("new_profile_name") or ""),
+            model=str(form.get("model") or ""),
+            endpoint=str(form.get("endpoint") or ""),
+            api_key_env=str(form.get("api_key_env") or ""),
+        )
+
     @app.post("/profiles/create/openrouter-free", response_class=HTMLResponse)
     async def create_openrouter_free(request: Request) -> HTMLResponse:
         form = await require_post_token(request)
@@ -151,6 +165,43 @@ def create_app(session_token: str, debug: bool = False) -> Any:
     async def test_profile(request: Request) -> HTMLResponse:
         await require_post_token(request)
         return await handle_action(request, actions.run_ai_doctor, "partials/doctor.html")
+
+    @app.post("/keys/session", response_class=HTMLResponse)
+    async def set_key_session(request: Request) -> HTMLResponse:
+        form = await require_post_token(request)
+        return await handle_action(
+            request,
+            actions.set_session_key,
+            "partials/profiles.html",
+            env_var_name=str(form.get("env_var_name") or ""),
+            api_key_value=str(form.get("api_key_value") or ""),
+        )
+
+    @app.post("/keys/commands", response_class=HTMLResponse)
+    async def key_commands(request: Request) -> HTMLResponse:
+        form = await require_post_token(request)
+        return await handle_action(
+            request,
+            actions.generate_key_commands,
+            "partials/profiles.html",
+            env_var_name=str(form.get("env_var_name") or ""),
+            shell=str(form.get("shell") or "auto"),
+            include_value=str(form.get("include_value") or "") == "true",
+            api_key_value=str(form.get("api_key_value") or ""),
+        )
+
+    @app.post("/keys/reveal", response_class=HTMLResponse)
+    async def reveal_key(request: Request) -> HTMLResponse:
+        form = await require_post_token(request)
+        result = actions.reveal_key(
+            env_var_name=str(form.get("env_var_name") or ""),
+            confirm_reveal=str(form.get("confirm_reveal") or "") == "true",
+        )
+        return templates.TemplateResponse(
+            name="partials/key_reveal.html",
+            context={**context(request), "reveal": result, "env_var_name": str(form.get("env_var_name") or "")},
+            request=request,
+        )
 
     @app.post("/fallback/toggle", response_class=HTMLResponse)
     async def toggle_fallback(request: Request) -> HTMLResponse:

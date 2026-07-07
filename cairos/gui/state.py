@@ -10,18 +10,8 @@ from .. import __version__
 from ..config import ai_fallback_settings, ai_profiles, active_ai_profile_name, config_path, load_config, shell_guess
 from ..history import history_path
 from ..rules import local_rules_path
-from .schemas import DoctorItem, GuiProfile, GuiState, ProviderPreset
-
-
-PROVIDER_PRESETS = [
-    ProviderPreset("openrouter-free", "OpenRouter Free", "openai", "openrouter/free", "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", "Free OpenRouter routing profile."),
-    ProviderPreset("openrouter-custom", "OpenRouter Custom", "openai", "openrouter/free", "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", "Custom OpenRouter model slug."),
-    ProviderPreset("gemini", "Gemini", "gemini", "gemini-2.5-flash", "https://generativelanguage.googleapis.com/v1beta", "GEMINI_API_KEY", "Google Gemini Developer API."),
-    ProviderPreset("groq", "Groq", "openai", "llama-3.1-8b-instant", "https://api.groq.com/openai/v1", "GROQ_API_KEY", "Groq OpenAI-compatible endpoint."),
-    ProviderPreset("openai", "OpenAI", "openai", "gpt-4.1-mini", "https://api.openai.com/v1", "OPENAI_API_KEY", "OpenAI chat completions endpoint."),
-    ProviderPreset("ollama", "Ollama Local", "ollama", "llama3.1", "http://localhost:11434", "", "Local Ollama provider."),
-    ProviderPreset("custom-openai-compatible", "Custom OpenAI-Compatible", "openai", "", "", "OPENAI_API_KEY", "Any OpenAI-compatible chat completions endpoint."),
-]
+from ..provider_presets import PROVIDER_PRESETS
+from .schemas import DoctorItem, GuiProfile, GuiState
 
 
 def _profile_to_gui(name: str, profile: dict[str, object], active: str) -> GuiProfile:
@@ -76,10 +66,9 @@ def build_doctor_items(config: dict[str, object], profiles: list[GuiProfile], fa
         DoctorItem("Config readable", "ok", str(config_path())),
         DoctorItem("Config schema", "ok" if config.get("schema_version") else "warning", str(config.get("schema_version") or "<missing>")),
         DoctorItem("Active profile", "ok" if active_profile else "warning", active or "<none>"),
-        DoctorItem("AI key env", "ok" if (not env_name or os.environ.get(env_name)) else "warning", f"{env_name or 'none'}: {'available' if env_name and os.environ.get(env_name) else 'missing' if env_name else 'not required'}"),
+        DoctorItem("API key environment variable", "ok" if (not env_name or os.environ.get(env_name)) else "warning", f"{env_name or 'none'}: {'available' if env_name and os.environ.get(env_name) else 'missing' if env_name else 'not required'}"),
         DoctorItem("Provider endpoint", "ok" if endpoint or str(ai.get("provider", "none")) in {"none", "ollama"} else "warning", endpoint or "<not set>"),
         DoctorItem("Fallback", "ok" if fallback.get("auto_fallback") else "warning", "enabled" if fallback.get("auto_fallback") else "disabled"),
         DoctorItem("PATH", "ok" if shutil.which("cairos") else "warning", shutil.which("cairos") or "cairos not found on PATH"),
         DoctorItem("GUI binding", "ok", "127.0.0.1 only by default"),
     ]
-

@@ -72,8 +72,27 @@ def check_publishing_files() -> int:
     return 0
 
 
+def check_ai_key_terms() -> int:
+    forbidden = [
+        re.compile(r"\bAPI key env\b"),
+        re.compile(r"\bapi key env\b"),
+        re.compile(r"\bAPI env key\b"),
+        re.compile(r"\bapi env key\b"),
+    ]
+    files = list((ROOT / "docs").rglob("*.md")) + list((ROOT / "cairos" / "gui" / "templates").rglob("*.html"))
+    matches = []
+    for file in files:
+        text = file.read_text(encoding="utf-8")
+        for term in forbidden:
+            if term.search(text):
+                matches.append(f"{file.relative_to(ROOT)}: {term.pattern}")
+    if matches:
+        return fail("Confusing API key environment labels found:\n" + "\n".join(f"- {item}" for item in matches))
+    return 0
+
+
 def main() -> int:
-    for check in [check_readme_links, check_version_strings, check_publishing_files]:
+    for check in [check_readme_links, check_version_strings, check_publishing_files, check_ai_key_terms]:
         code = check()
         if code:
             return code

@@ -93,12 +93,13 @@ cairos gui
 For editable development installs:
 
 ```bash
-python -m pip install -e ".[gui]"
+python -m pip install -e ".[gui,dev]"
 ```
 
 The GUI shows config paths, AI profiles, provider setup, fallback settings,
 doctor output, and update/backup guidance. It binds locally, uses a temporary
-session token for state-changing POST requests, and never displays raw API keys.
+session token for state-changing POST requests, and hides raw API keys unless
+you explicitly use a reveal action.
 
 ## Templates vs AI
 
@@ -152,6 +153,20 @@ cairos config ai fallback order openrouter-free gemini-flash groq-llama
 ```
 
 CAIROS stores environment variable names, never raw API keys.
+
+Generate shell-specific key setup commands:
+
+```bash
+cairos config ai key commands OPENROUTER_API_KEY --shell bash
+cairos config ai key commands OPENROUTER_API_KEY --shell powershell
+cairos config ai key status OPENROUTER_API_KEY
+```
+
+Reveal commands print secrets only when explicitly requested:
+
+```bash
+cairos config ai key reveal OPENROUTER_API_KEY
+```
 
 ## Key Locations
 
