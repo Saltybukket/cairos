@@ -39,7 +39,7 @@ cairos gui --debug
 ```
 
 `--port 0` chooses a free random local port. `--no-open` prints the URL without
-opening a browser.
+opening a browser. Supported bind hosts are `127.0.0.1` and `localhost`.
 
 ## Headless Check
 
@@ -47,16 +47,19 @@ opening a browser.
 cairos gui --check
 ```
 
-The check prints dependency availability, config readability, loaded profile
-count, and GUI state status. It exits without starting a long-running server.
+The check prints dependency availability, including `python-multipart` for form
+POST parsing, config readability, loaded profile count, and GUI state status.
+It exits without starting a long-running server.
 
 ## Security Model
 
-- The GUI binds only to local hosts such as `127.0.0.1`.
+- The GUI binds only to local hosts: `127.0.0.1` or `localhost`.
 - Binding to `0.0.0.0` is refused.
 - Each launch creates a temporary session token.
 - State-changing POST routes require the token.
 - Cross-origin POST requests are rejected.
+- Responses include `Referrer-Policy`, `Cache-Control`, `X-Frame-Options`, and
+  `X-Content-Type-Options` security headers.
 - The GUI does not execute arbitrary shell commands.
 - Raw API keys are never stored or displayed.
 

@@ -454,6 +454,15 @@ def _fallback_status_text() -> str:
 
 def _handle_ai_fallback(args: list[str]) -> int:
     subcommand = args[0] if args else "status"
+    if subcommand in {"-h", "--help", "help"}:
+        print("Usage: cairos config ai fallback status|enable|disable|order [profile...]")
+        print("")
+        print("Controls automatic AI profile fallback for recoverable provider failures.")
+        print("Examples:")
+        print("  cairos config ai fallback status")
+        print("  cairos config ai fallback enable")
+        print("  cairos config ai fallback order openrouter-free gemini-flash groq-llama")
+        return 0
     if subcommand == "status":
         print(_fallback_status_text())
         return 0
@@ -1045,6 +1054,12 @@ def _recommended_update_command() -> str:
 
 
 def _handle_update(args: list[str]) -> int:
+    if args and args[0] in {"-h", "--help", "help"}:
+        print("Usage: cairos update [--check|--print-command]")
+        print("")
+        print("Shows the recommended update command and explains preserved config/history/profile files.")
+        print("Use cairos backup-config before updating if you want a timestamped config backup.")
+        return 0
     command = _recommended_update_command()
     print("CAIROS Update")
     print("")

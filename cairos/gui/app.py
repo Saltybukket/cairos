@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import actions
-from .security import mask_secret_text, token_matches
+from .security import mask_secret_text, same_origin, token_matches
 from .state import PROVIDER_PRESETS, load_gui_state
 
 
@@ -24,6 +24,15 @@ def create_app(session_token: str, debug: bool = False) -> Any:
     app = FastAPI(title="CAIROS GUI", debug=debug)
     app.mount("/static", StaticFiles(directory=str(root / "static")), name="static")
 
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next: Callable[..., Any]) -> Any:
+        response = await call_next(request)
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
     def context(request: Request, alert: Any = None) -> dict[str, Any]:
         return {
             "request": request,
@@ -37,8 +46,7 @@ def create_app(session_token: str, debug: bool = False) -> Any:
         return templates.TemplateResponse(name=template, context=context(request, alert), request=request)
 
     async def require_post_token(request: Request) -> dict[str, Any]:
-        origin = request.headers.get("origin")
-        if origin and request.url.hostname and not origin.startswith(f"{request.url.scheme}://{request.url.hostname}"):
+        if not same_origin(request.url, request.headers.get("origin")):
             raise HTTPException(status_code=403, detail="Cross-origin POST rejected")
         form = dict(await request.form())
         if not token_matches(session_token, str(form.get("token") or "")):

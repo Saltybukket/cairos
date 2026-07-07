@@ -7,7 +7,7 @@
       "cairos.cli",
       "--version"
     ],
-    "expected_stdout": "0.5.0a2\n",
+    "expected_stdout": "0.5.0a3\n",
     "expected_stderr": "",
     "expected_exit": 0
   },

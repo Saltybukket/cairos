@@ -18,6 +18,7 @@ docs-check:
 	@if grep -R "gemini-1.5-flash" -n --include="*.md" --exclude-dir=.git --exclude-dir=.venv --exclude-dir=reports cairos scripts .; then echo "Stale Gemini model reference found"; exit 1; fi
 	@if grep -R "<user>/<repo>\|github.com/<user>" -n --include="*.md" --exclude-dir=.git --exclude-dir=.venv --exclude-dir=reports cairos scripts .; then echo "Placeholder GitHub URL found"; exit 1; fi
 	@if grep -R "name = \"cairos\"" -n pyproject.toml; then echo "Stale package name found"; exit 1; fi
+	python3 scripts/docs_check.py
 
 secret-check:
 	@if grep -R "AQ\\." -n --exclude-dir=.git --exclude-dir=.venv --exclude-dir=reports --exclude=results.json --exclude=testreport.html .; then echo "Potential raw API key found"; exit 1; fi

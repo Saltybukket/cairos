@@ -2,6 +2,14 @@
 
 This file records notable CAIROS changes by release.
 
+## 0.5.0a3
+
+- Polished local GUI dependency checks and now verify `python-multipart`.
+- Hardened GUI localhost/origin validation and added local security headers.
+- Cleaned documentation and updated release/version references for 0.5.0a3.
+- Added tests for GUI dependency checks, POST token/origin behavior, security
+  headers, docs links, and version consistency.
+
 ## 0.5.0a2
 
 - Added optional local FastAPI/HTMX/Tailwind GUI launched with `cairos gui`.

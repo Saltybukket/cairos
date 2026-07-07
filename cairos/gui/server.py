@@ -16,6 +16,7 @@ GUI_DEPENDENCIES = {
     "FastAPI": "fastapi",
     "Uvicorn": "uvicorn",
     "Jinja2": "jinja2",
+    "python-multipart": "multipart",
 }
 
 
@@ -70,7 +71,7 @@ def _choose_port(host: str, port: int) -> int:
 def run_gui(host: str = "127.0.0.1", port: int = 0, no_open: bool = False, debug: bool = False) -> int:
     if not is_local_host(host):
         print("Refusing to bind CAIROS GUI to a non-local host.")
-        print("Use 127.0.0.1, localhost, or ::1.")
+        print("Use 127.0.0.1 or localhost.")
         return 1
     check = check_gui_support()
     if not check.ok:
@@ -109,13 +110,20 @@ def handle_gui_command(args: list[str]) -> int:
     port = 0
     no_open = False
     debug = False
+    check_only = False
     index = 0
     while index < len(args):
         arg = args[index]
+        if arg in {"-h", "--help", "help"}:
+            print("Usage: cairos gui [--host 127.0.0.1] [--port 0] [--no-open] [--debug] [--check]")
+            print("")
+            print("Starts the optional local FastAPI/HTMX GUI. The server binds only to localhost.")
+            print("--check runs dependency/state diagnostics and exits.")
+            return 0
         if arg == "--check":
-            check = check_gui_support()
-            print("\n".join(check.lines))
-            return 0 if check.ok else 1
+            check_only = True
+            index += 1
+            continue
         if arg == "--host" and index + 1 < len(args):
             host = args[index + 1]
             index += 2
@@ -138,4 +146,12 @@ def handle_gui_command(args: list[str]) -> int:
             continue
         print(f"Unknown gui option: {arg}")
         return 1
+    if not is_local_host(host):
+        print("Refusing to bind CAIROS GUI to a non-local host.")
+        print("Use 127.0.0.1 or localhost.")
+        return 1
+    if check_only:
+        check = check_gui_support()
+        print("\n".join(check.lines))
+        return 0 if check.ok else 1
     return run_gui(host=host, port=port, no_open=no_open, debug=debug)

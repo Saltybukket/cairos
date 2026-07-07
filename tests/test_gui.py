@@ -9,13 +9,13 @@ from unittest.mock import patch
 from cairos.cli import main
 from cairos.config import active_ai_profile_name, ai_fallback_settings, ai_profiles, configure_gemini, configure_openai
 from cairos.gui import actions
-from cairos.gui.security import mask_secret_text, token_matches
-from cairos.gui.server import check_gui_support
+from cairos.gui.security import mask_secret_text, same_origin, token_matches
+from cairos.gui.server import check_gui_support, dependency_status
 from cairos.gui.state import load_gui_state
 
 
 def gui_deps_available() -> bool:
-    return all(importlib.util.find_spec(name) is not None for name in ["fastapi", "uvicorn", "jinja2"])
+    return all(importlib.util.find_spec(name) is not None for name in ["fastapi", "uvicorn", "jinja2", "multipart"])
 
 
 class GuiStateActionTests(unittest.TestCase):
@@ -68,6 +68,10 @@ class GuiStateActionTests(unittest.TestCase):
     def test_secret_masking_and_token_compare(self):
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": "sk-test-secret-value-that-must-not-render"}, clear=False):
             self.assertIn("<redacted>", mask_secret_text("value sk-test-secret-value-that-must-not-render"))
+        self.assertIn("<redacted>", mask_secret_text("sk-or-v1-abcdefghijklmnopqrstuvwxyz"))
+        self.assertIn("<redacted>", mask_secret_text("ghp_abcdefghijklmnopqrstuvwxyz123456"))
+        self.assertIn("<redacted>", mask_secret_text("hf_abcdefghijklmnopqrstuvwxyz123456"))
+        self.assertIn("ordinary-long-project-identifier", mask_secret_text("ordinary-long-project-identifier"))
         self.assertTrue(token_matches("abc", "abc"))
         self.assertFalse(token_matches("abc", "def"))
 
@@ -77,6 +81,10 @@ class GuiStateActionTests(unittest.TestCase):
             check = check_gui_support()
         self.assertIn("CAIROS GUI check:", "\n".join(check.lines))
         self.assertIn("Config readable:", "\n".join(check.lines))
+        self.assertIn("python-multipart:", "\n".join(check.lines))
+
+    def test_dependency_status_includes_form_parser(self):
+        self.assertIn("python-multipart", dependency_status())
 
     def test_gui_check_cli_handles_missing_dependencies(self):
         out = io.StringIO()
@@ -85,6 +93,24 @@ class GuiStateActionTests(unittest.TestCase):
                 code = main(["gui", "--check"])
         self.assertEqual(code, 1)
         self.assertIn("FastAPI: missing", out.getvalue())
+
+    def test_non_local_gui_host_refused_even_for_check(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(["gui", "--host", "0.0.0.0", "--check"])
+        self.assertEqual(code, 1)
+        self.assertIn("Refusing to bind", out.getvalue())
+
+    def test_origin_helper(self):
+        class Url:
+            scheme = "http"
+            hostname = "127.0.0.1"
+            port = 5321
+
+        self.assertTrue(same_origin(Url(), None))
+        self.assertTrue(same_origin(Url(), "http://127.0.0.1:5321"))
+        self.assertFalse(same_origin(Url(), "http://127.0.0.1:9999"))
+        self.assertFalse(same_origin(Url(), "http://evil.example"))
 
 
 @unittest.skipUnless(gui_deps_available(), "GUI optional dependencies are not installed")
@@ -110,17 +136,33 @@ class GuiRouteTests(unittest.TestCase):
             response = client.get(path)
             self.assertEqual(response.status_code, 200)
             self.assertNotIn("sk-", response.text)
+            self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
+            self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+            self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
 
-    def test_post_requires_token(self):
+    def test_post_requires_token_and_origin(self):
         home = self.with_home()
         client = self.make_client(home)
         response = client.post("/profiles/switch", data={"profile_name": "missing"})
+        self.assertEqual(response.status_code, 403)
+        response = client.post("/profiles/switch", data={"token": "wrong", "profile_name": "missing"})
+        self.assertEqual(response.status_code, 403)
+        response = client.post(
+            "/profiles/create/openrouter-free",
+            data={"token": "test-token", "profile_name": "openrouter-free"},
+            headers={"Origin": "http://evil.example"},
+        )
         self.assertEqual(response.status_code, 403)
 
     def test_create_switch_and_backup_with_token(self):
         home = self.with_home()
         client = self.make_client(home)
-        response = client.post("/profiles/create/openrouter-free", data={"token": "test-token", "profile_name": "openrouter-free"})
+        response = client.post(
+            "/profiles/create/openrouter-free",
+            data={"token": "test-token", "profile_name": "openrouter-free"},
+            headers={"Origin": "http://testserver"},
+        )
         self.assertEqual(response.status_code, 200)
         self.assertIn("Created OpenRouter free profile", response.text)
         response = client.post("/profiles/switch", data={"token": "test-token", "profile_name": "openrouter-free"})

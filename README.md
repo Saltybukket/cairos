@@ -28,7 +28,7 @@ cairos context
 cairos check if repo is ready to commit
 ```
 
-OpenRouter free quickstart:
+Optional AI quickstart:
 
 ```bash
 export OPENROUTER_API_KEY="your-key"
@@ -36,39 +36,13 @@ cairos config ai use-openrouter-free
 cairos config ai test
 ```
 
-Optional Gemini setup:
-
-```bash
-export GEMINI_API_KEY="your-key"
-cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
-cairos config ai test
-```
-
-## Windows PowerShell
+Windows users should run:
 
 ```powershell
 py -m pip install --user pipx
 py -m pipx ensurepath
 pipx install git+https://github.com/Saltybukket/cairos.git
 cairos quicksetup
-```
-
-Gemini in PowerShell:
-
-```powershell
-$env:GEMINI_API_KEY="your-key"
-[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-key", "User")
-cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
-cairos config ai test
-```
-
-Gemini in cmd.exe:
-
-```cmd
-set GEMINI_API_KEY=your-key
-setx GEMINI_API_KEY "your-key"
-cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
-cairos config ai test
 ```
 
 ## Future PyPI Install
@@ -156,15 +130,13 @@ preserved across package upgrades.
 
 ## AI Profiles
 
-Save multiple providers/models and switch quickly:
+Save multiple providers/models and switch quickly. Full provider setup lives in
+[AI Providers](docs/AI_PROVIDERS.md).
 
 ```bash
-cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
-cairos config ai use-openai gpt-4.1-mini --profile openai-mini
-cairos config ai use-ollama llama3.1 --profile ollama-local
+cairos config ai use-openrouter-free
 cairos config ai profiles
 cairos config ai switch
-cairos config ai use-profile openai-mini
 ```
 
 Automatic profile fallback is enabled by default. If the active profile is
@@ -183,35 +155,10 @@ CAIROS stores environment variable names, never raw API keys.
 
 ## Key Locations
 
-Linux/macOS/WSL config:
-
-```text
-~/.config/cairos/config.json
-```
-
-Linux/macOS/WSL history:
-
-```text
-~/.local/state/cairos/history.jsonl
-```
-
-Windows config:
-
-```text
-%APPDATA%\cairos\config.json
-```
-
-Windows history:
-
-```text
-%LOCALAPPDATA%\cairos\history.jsonl
-```
-
-Optional project-local rules:
-
-```text
-.cairos/rules.json
-```
+Global config lives in `~/.config/cairos/config.json` on Linux/macOS/WSL and
+`%APPDATA%\cairos\config.json` on Windows. History lives in
+`~/.local/state/cairos/history.jsonl` or `%LOCALAPPDATA%\cairos\history.jsonl`.
+Optional project-local rules live in `.cairos/rules.json`.
 
 ## Documentation
 
