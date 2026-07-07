@@ -15,6 +15,7 @@ Main modules:
 Run checks:
 
 ```bash
+python -m pip install -e '.[gui,dev]'
 make compile
 make test
 make secret-check

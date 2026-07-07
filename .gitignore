@@ -6,6 +6,7 @@ __pycache__/
 
 # Virtual environments
 .venv/
+.release-venv/
 venv/
 env/
 
@@ -26,6 +27,7 @@ reports/
 # Editor / OS
 .vscode/
 .idea/
+*.code-workspace
 .DS_Store
 Thumbs.db
 

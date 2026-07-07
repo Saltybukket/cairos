@@ -35,6 +35,7 @@ class ReleasePolishTests(unittest.TestCase):
         self.assertIn('Repository = "https://github.com/Saltybukket/cairos"', pyproject)
         self.assertIn('Changelog = "https://github.com/Saltybukket/cairos/blob/main/CHANGELOG.md"', pyproject)
         self.assertIn('"python-multipart"', pyproject)
+        self.assertIn('"httpx2"', pyproject)
 
     def test_readme_doc_links_exist(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

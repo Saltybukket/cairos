@@ -11,6 +11,8 @@ This file records notable CAIROS changes by release.
   headers, docs links, and version consistency.
 - Added PyPI Trusted Publishing workflow, CI workflow, package manifest, release
   checks, and PyPI-ready release documentation.
+- Made GUI TestClient dependencies explicit in the development extra and CI
+  install, while keeping normal CLI and GUI runtime installs lightweight.
 
 ## 0.5.0a2
 
