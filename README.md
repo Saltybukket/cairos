@@ -187,6 +187,7 @@ Optional project-local rules:
 - [AI Providers](docs/AI_PROVIDERS.md)
 - [Windows Guide](docs/WINDOWS.md)
 - [Shell Navigation](docs/SHELL_NAVIGATION.md)
+- [Request Router](docs/ROUTER.md)
 - [AI Troubleshooting](docs/TROUBLESHOOTING_AI.md)
 - [Updating](docs/UPDATING.md)
 - [Safety](docs/SAFETY.md)

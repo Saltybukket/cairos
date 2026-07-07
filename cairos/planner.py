@@ -12,7 +12,7 @@ import os
 
 from .config import load_config
 from .models import Plan
-from .router import RouteDecision, classify_request_complexity, score_template_candidate
+from .router import ROUTE_AI, ROUTE_CONVERSATION, ROUTE_NO_MATCH, ROUTE_SAFETY_CHECK, RouteDecision, classify_request_complexity, route_request, score_template_candidate
 from .safety import check_steps
 from .templates import plan_from_template
 
@@ -68,9 +68,26 @@ def _fallback_or_no_match(request: str, allow_ai: bool, decision: RouteDecision,
 def make_plan(request: str, allow_ai: bool = True) -> Plan:
     """Create a safe plan from a user request."""
     config = load_config()
+    behavior = config.get("behavior", {})
+    pre_route = route_request(
+        request,
+        allow_ml=bool(behavior.get("ml_router_enabled", False)),
+        router=str(behavior.get("router", "auto")),
+    )
+    if pre_route.route == ROUTE_CONVERSATION:
+        plan = plan_from_template(request)
+        if plan is not None:
+            plan.template_confidence = pre_route.confidence
+            return plan
+    if pre_route.route == ROUTE_NO_MATCH and pre_route.confidence >= 0.80:
+        return _no_reliable_template_plan(request, pre_route, ai_configured=config["ai"].get("provider", "none") != "none")
+    if pre_route.route == ROUTE_AI and pre_route.confidence >= 0.80:
+        return _fallback_or_no_match(request, allow_ai, pre_route, config)
+    # Safety checks are handled explicitly by `cairos check`; direct planning still
+    # goes through templates/AI so it can show a normal CAIROS plan.
+    _ = ROUTE_SAFETY_CHECK
     plan = plan_from_template(request)
     decision = score_template_candidate(request, plan, classify_request_complexity(request))
-    behavior = config.get("behavior", {})
     ai_on_uncertain = bool(behavior.get("ai_on_uncertain_template", True))
 
     if plan is None:

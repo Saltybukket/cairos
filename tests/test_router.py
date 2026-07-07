@@ -1,10 +1,24 @@
 import unittest
+from unittest.mock import patch
 
-from cairos.router import classify_request_complexity, format_route_debug, score_template_candidate
+from cairos.router import ROUTE_AI, ROUTE_CONVERSATION, ROUTE_NO_MATCH, ROUTE_SAFETY_CHECK, ROUTE_TEMPLATE, classify_request_complexity, format_route_debug, route_request, score_template_candidate
 from cairos.templates import plan_from_template
 
 
 class RouterTests(unittest.TestCase):
+    def test_route_request_common_routes(self):
+        self.assertEqual(route_request("create folder docs", allow_ml=False).route, ROUTE_TEMPLATE)
+        self.assertEqual(route_request("how are you", allow_ml=False).route, ROUTE_CONVERSATION)
+        self.assertEqual(route_request("rm -rf /", allow_ml=False).route, ROUTE_SAFETY_CHECK)
+        self.assertEqual(route_request("setup this whole repo for release and fix docs", allow_ml=False).route, ROUTE_AI)
+        self.assertEqual(route_request("flibbertigibbet xyzzy", allow_ml=False).route, ROUTE_NO_MATCH)
+
+    def test_ml_router_missing_model_falls_back(self):
+        with patch("cairos.router._model_paths", return_value=[]):
+            decision = route_request("create folder docs", allow_ml=True, router="ml")
+        self.assertEqual(decision.route, ROUTE_TEMPLATE)
+        self.assertIn("fallback", str(decision.debug.get("router_type", "")))
+
     def test_complex_directory_still_extracts_good_terms(self):
         request = "change into the directory oop ss26 at least its named something like that - change the current directory"
         plan = plan_from_template(request)

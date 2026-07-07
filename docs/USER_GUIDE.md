@@ -72,6 +72,7 @@ back and uses AI fallback when configured; otherwise it returns a helpful
 no-match instead of forcing a brittle template.
 
 All resulting plans, including AI plans, still go through safety scanning.
+See `docs/ROUTER.md` for training/evaluation details and debug output.
 
 Use `expand` when you want shell-equivalent deterministic output only:
 

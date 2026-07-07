@@ -5,6 +5,8 @@ This file records notable CAIROS changes by release.
 ## 0.5.0a1
 
 - Added template confidence routing and `cairos plan --debug-route`.
+- Added router training/evaluation tooling and optional TF-IDF Logistic Regression router support.
+- Added router training dataset and optional trained router model artifact.
 - Reduced aggressive template matching for broad or fuzzy requests.
 - Added AI fallback/no-match behavior for uncertain deterministic matches.
 - Improved fuzzy directory navigation handling and routed cd guidance through `cairos find-dir`.

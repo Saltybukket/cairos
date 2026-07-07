@@ -38,6 +38,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "template_confidence_threshold": 0.8,
         "ai_on_uncertain_template": True,
         "ai_router_enabled": False,
+        "router": "auto",
+        "ml_router_enabled": False,
     },
 }
 

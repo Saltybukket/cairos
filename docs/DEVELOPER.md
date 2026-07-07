@@ -27,6 +27,14 @@ Network AI tests are optional:
 make test-ai
 ```
 
+Router training and evaluation:
+
+```bash
+python -m pip install -e '.[ml-router]'
+python scripts/train_router.py --data data/router_training.jsonl
+python scripts/eval_router.py --data data/router_training.jsonl --use-ml
+```
+
 Use match debugging for template work:
 
 ```bash
@@ -38,6 +46,7 @@ Templates should only win when confidence is high. Broad requests such as
 release preparation, fuzzy navigation, or "fix everything" workflows should
 step back to AI fallback or a clear no-match. Keep routing heuristics in
 `cairos/router.py` and target extraction helpers in `cairos/shell_utils.py`.
+See `docs/ROUTER.md` for route labels, training data format, and evaluation.
 
 ## Release
 
