@@ -7,8 +7,7 @@ call the AI planner.  Every resulting plan is scanned by the safety layer.
 
 from __future__ import annotations
 
-from .ai import AIPlannerError, plan_with_ai
-import os
+from .ai import AIPlannerError, plan_with_ai_fallback
 
 from .config import load_config
 from .models import Plan
@@ -20,11 +19,7 @@ from .templates import plan_from_template
 def _ai_is_configured_and_available(config: dict) -> bool:
     ai = config["ai"]
     provider = ai.get("provider", "none")
-    if provider == "none":
-        return False
-    if provider in {"openai", "openai-compatible", "gemini"}:
-        return bool(os.environ.get(ai.get("api_key_env") or ""))
-    return True
+    return provider != "none" or bool(config.get("ai_profiles"))
 
 
 def _no_reliable_template_plan(request: str, decision: RouteDecision, ai_configured: bool) -> Plan:
@@ -52,7 +47,7 @@ def _no_reliable_template_plan(request: str, decision: RouteDecision, ai_configu
 def _fallback_or_no_match(request: str, allow_ai: bool, decision: RouteDecision, config: dict) -> Plan:
     if allow_ai and _ai_is_configured_and_available(config):
         try:
-            return plan_with_ai(request)
+            return plan_with_ai_fallback(request)
         except AIPlannerError as exc:
             return Plan(
                 summary="No reliable deterministic template matched, and the configured AI backend failed.",
@@ -93,7 +88,7 @@ def make_plan(request: str, allow_ai: bool = True) -> Plan:
     if plan is None:
         if allow_ai and _ai_is_configured_and_available(config):
             try:
-                plan = plan_with_ai(request)
+                plan = plan_with_ai_fallback(request)
             except AIPlannerError as exc:
                 return Plan(
                     summary="No deterministic template matched, and the configured AI backend failed.",

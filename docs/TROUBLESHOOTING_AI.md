@@ -55,6 +55,33 @@ Check model slug and base endpoint. For Gemini, run
 Network errors usually mean connection, proxy, DNS, TLS, endpoint URL or
 provider outage issues.
 
+## Automatic Fallback
+
+Run:
+
+```bash
+cairos config ai fallback status
+cairos config ai profiles
+```
+
+When fallback is enabled, CAIROS tries saved profiles in this order:
+
+1. active profile
+2. profiles in `ai.fallback_order`
+3. remaining profiles with sensible preference for free/local options
+
+Recoverable categories include `rate_limit_quota`, `insufficient_credits`,
+`temporary_provider`, `network`, `auth`, `model_unavailable`, and
+`missing_key`. If all profiles fail, CAIROS prints a `Tried:` list with each
+profile and the normalized category.
+
+To keep fallback for one request only instead of switching the active profile,
+set:
+
+```bash
+cairos config set ai.fallback_persist_switch false
+```
+
 ## Windows Notes
 
 `setx` and PowerShell persistent environment changes require a new terminal.

@@ -1,3 +1,3 @@
-from .base import AIPlannerError, ai_self_test, list_models, plan_with_ai
+from .base import AIPlannerError, AiFailure, ai_self_test, list_models, plan_with_ai, plan_with_ai_fallback
 
-__all__ = ["AIPlannerError", "ai_self_test", "list_models", "plan_with_ai"]
+__all__ = ["AIPlannerError", "AiFailure", "ai_self_test", "list_models", "plan_with_ai", "plan_with_ai_fallback"]

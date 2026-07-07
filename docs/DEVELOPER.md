@@ -48,6 +48,13 @@ step back to AI fallback or a clear no-match. Keep routing heuristics in
 `cairos/router.py` and target extraction helpers in `cairos/shell_utils.py`.
 See `docs/ROUTER.md` for route labels, training data format, and evaluation.
 
+AI fallback lives in `cairos/ai/base.py`. Provider adapters raise
+`AIPlannerError` with an optional `AiFailure` that normalizes profile, provider,
+model, endpoint, HTTP status, category, message, and recoverability. Planner
+code should call `plan_with_ai_fallback()` so active-profile failures can try
+other saved profiles without bypassing safety scanning or execution
+confirmation.
+
 ## Release
 
 Install build tooling only when preparing a release:

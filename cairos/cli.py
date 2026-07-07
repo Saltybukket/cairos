@@ -19,6 +19,7 @@ from . import __version__
 from .ai import ai_self_test, list_models
 from .config import (
     ai_status,
+    ai_fallback_settings,
     activate_ai_profile,
     active_ai_profile_name,
     ai_profiles,
@@ -38,6 +39,7 @@ from .config import (
     migrate_config_file,
     rename_ai_profile,
     save_current_ai_profile,
+    set_ai_fallback,
     set_config_value,
     shell_guess,
     state_dir,
@@ -78,6 +80,9 @@ Usage:
   cairos config show
   cairos config path
   cairos config ai status
+  cairos config ai fallback status
+  cairos config ai fallback enable|disable
+  cairos config ai fallback order [profile...]
   cairos config ai test
   cairos config ai list-models
   cairos config ai examples
@@ -290,6 +295,12 @@ Providers:
 Models:
   cairos config ai list-models
 
+Fallback:
+  cairos config ai fallback status
+  cairos config ai fallback enable
+  cairos config ai fallback disable
+  cairos config ai fallback order openrouter-free gemini-flash groq-llama
+
 Never store raw API keys in CAIROS config. Store only environment variable names."""
 
 
@@ -367,9 +378,10 @@ def _format_profile_summary(name: str, profile: dict[str, object], active: str) 
 def _profiles_text() -> str:
     profiles = ai_profiles()
     active = active_ai_profile_name()
+    fallback = _fallback_summary_lines()
     if not profiles:
-        return "AI Profiles\n\nNo saved AI profiles yet.\nTry: cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash"
-    lines = ["AI Profiles", ""]
+        return "AI Profiles\n\n" + "\n".join(fallback) + "\n\nNo saved AI profiles yet.\nTry: cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash"
+    lines = ["AI Profiles", "", *fallback, ""]
     for name in sorted(profiles):
         lines.extend(_format_profile_summary(name, profiles[name], active))
         lines.append("")
@@ -387,6 +399,7 @@ def _ai_doctor_text() -> str:
         f"model: {ai.get('model') or '<not set>'}",
         f"endpoint: {ai.get('endpoint') or '<not set>'}",
         f"api_key_env: {env_name or 'none'}",
+        *_fallback_summary_lines(),
     ]
     if env_name:
         lines.append(f"env var visible: {'yes' if os.environ.get(env_name) else 'no'}")
@@ -412,6 +425,58 @@ def _ai_doctor_text() -> str:
             ]
         )
     return "\n".join(lines)
+
+
+def _fallback_summary_lines() -> list[str]:
+    fallback = ai_fallback_settings()
+    order = ", ".join(fallback["fallback_order"]) or "<default>"
+    return [
+        f"auto fallback: {'enabled' if fallback['auto_fallback'] else 'disabled'}",
+        f"fallback order: {order}",
+        f"persist fallback switch: {'yes' if fallback['fallback_persist_switch'] else 'no'}",
+    ]
+
+
+def _fallback_status_text() -> str:
+    lines = ["AI fallback", *_fallback_summary_lines()]
+    lines.extend(
+        [
+            "",
+            "Commands:",
+            "  cairos config ai fallback enable",
+            "  cairos config ai fallback disable",
+            "  cairos config ai fallback order openrouter-free gemini-flash",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _handle_ai_fallback(args: list[str]) -> int:
+    subcommand = args[0] if args else "status"
+    if subcommand == "status":
+        print(_fallback_status_text())
+        return 0
+    if subcommand == "enable":
+        path = set_ai_fallback(enabled=True)
+        print(f"Enabled AI profile fallback in {path}")
+        print(_fallback_status_text())
+        return 0
+    if subcommand == "disable":
+        path = set_ai_fallback(enabled=False)
+        print(f"Disabled AI profile fallback in {path}")
+        print(_fallback_status_text())
+        return 0
+    if subcommand == "order":
+        if len(args) == 1:
+            print(_fallback_status_text())
+            return 0
+        path = set_ai_fallback(order=args[1:])
+        print(f"Updated AI fallback order in {path}")
+        print(_fallback_status_text())
+        return 0
+    print(f"Unknown AI fallback command: {subcommand}", file=sys.stderr)
+    print("Try: cairos config ai fallback status", file=sys.stderr)
+    return 1
 
 
 def _print_unknown_ai_command(command: str) -> int:
@@ -578,6 +643,9 @@ def _handle_config_ai(args: list[str]) -> int:
     if args[0] == "doctor":
         print(_ai_doctor_text())
         return 0
+
+    if args[0] == "fallback":
+        return _handle_ai_fallback(args[1:])
 
     if args[0] == "list-providers":
         _print_provider_list()

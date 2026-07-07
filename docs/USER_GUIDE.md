@@ -80,6 +80,24 @@ Use `expand` when you want shell-equivalent deterministic output only:
 cairos expand create python project crawler with venv git
 ```
 
+## AI Profile Fallback
+
+When AI is configured and a request needs AI, CAIROS first tries the active
+profile. If that profile returns a recoverable provider failure such as rate
+limit, quota, insufficient credits, temporary outage, network error, missing
+key, auth restriction, or unavailable model, CAIROS tries another saved profile.
+
+```bash
+cairos config ai fallback status
+cairos config ai fallback enable
+cairos config ai fallback disable
+cairos config ai fallback order openrouter-free gemini-flash groq-llama
+```
+
+If `ai.fallback_persist_switch` is true, the working fallback becomes the active
+profile. If false, the fallback is used only for the current request. `cairos
+run` still requires the normal confirmation for write actions.
+
 Use preview and diff before writing files:
 
 ```bash

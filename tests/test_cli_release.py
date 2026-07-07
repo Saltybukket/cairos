@@ -45,9 +45,23 @@ class CLIReleaseTests(unittest.TestCase):
         code, out, _ = self.run_cli(["config", "ai", "doctor"])
         self.assertEqual(code, 0)
         self.assertIn("HTTP guidance", out)
+        self.assertIn("auto fallback", out)
         code, out, _ = self.run_cli(["config", "ai", "--help"])
         self.assertEqual(code, 0)
         self.assertIn("use-openrouter-free", out)
+
+    def test_ai_fallback_cli(self):
+        home = tempfile.mkdtemp()
+        code, out, _ = self.run_cli(["config", "ai", "fallback", "status"], home=home)
+        self.assertEqual(code, 0)
+        self.assertIn("AI fallback", out)
+        self.assertIn("enabled", out)
+        code, out, _ = self.run_cli(["config", "ai", "fallback", "disable"], home=home)
+        self.assertEqual(code, 0)
+        self.assertIn("disabled", out)
+        code, out, _ = self.run_cli(["config", "ai", "fallback", "order", "openrouter-free", "gemini-flash"], home=home)
+        self.assertEqual(code, 0)
+        self.assertIn("openrouter-free, gemini-flash", out)
 
     def test_find_dir_fuzzy_multi_word(self):
         with tempfile.TemporaryDirectory() as tmp:

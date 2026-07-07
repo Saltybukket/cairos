@@ -73,6 +73,7 @@ class Plan:
     summary: str
     steps: list[CommandStep] = field(default_factory=list)
     risk: Risk = "low"
+    notices: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     source: str = "template"
     requires_confirmation: bool = True

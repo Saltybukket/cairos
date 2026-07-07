@@ -96,6 +96,11 @@ def execute_plan(plan: Plan, yes: bool = False) -> int:
             print(f"- {reason}")
         return 2
 
+    if plan.notices:
+        for notice in plan.notices:
+            print(notice)
+        print("")
+
     print(f"Plan: {plan.summary}")
     print(f"Source: {plan.source}")
     print(f"Risk: {safety.risk}")

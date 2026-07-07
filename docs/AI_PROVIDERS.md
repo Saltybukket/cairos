@@ -93,3 +93,34 @@ cairos config ai use-openai <chat-model-id> --endpoint https://router.huggingfac
 
 Check each provider's current model catalog, token permissions, billing, rate
 limits and free-tier availability before relying on a model.
+
+## Automatic Profile Fallback
+
+CAIROS can keep multiple AI profiles and automatically try another profile when
+the active backend is temporarily unusable. Fallback is enabled by default.
+
+```bash
+cairos config ai fallback status
+cairos config ai fallback enable
+cairos config ai fallback disable
+cairos config ai fallback order openrouter-free gemini-flash groq-llama
+```
+
+Config keys:
+
+```json
+{
+  "ai": {
+    "auto_fallback": true,
+    "fallback_order": [],
+    "fallback_persist_switch": true
+  }
+}
+```
+
+Fallback triggers for recoverable provider failures such as HTTP 429
+rate/quota limits, HTTP 402 insufficient credits, HTTP 502/503/504 temporary
+provider errors, network timeouts, auth/key failures where another profile may
+work, and model unavailable errors. It does not bypass `cairos run`
+confirmation; the final plan still goes through the normal safety and
+confirmation flow.

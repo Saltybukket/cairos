@@ -27,6 +27,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "api_key_env": "OPENAI_API_KEY",
         "custom_command": "",
         "timeout_seconds": 60,
+        "auto_fallback": True,
+        "fallback_order": [],
+        "fallback_persist_switch": True,
     },
     "ai_profiles": {},
     "active_ai_profile": "",
@@ -369,6 +372,32 @@ def active_ai_profile_name() -> str:
     return str(load_config().get("active_ai_profile", ""))
 
 
+def ai_fallback_settings() -> dict[str, Any]:
+    """Return normalized AI fallback settings."""
+    ai = load_config()["ai"]
+    order = ai.get("fallback_order", [])
+    if not isinstance(order, list):
+        order = []
+    return {
+        "auto_fallback": bool(ai.get("auto_fallback", True)),
+        "fallback_order": [str(item) for item in order],
+        "fallback_persist_switch": bool(ai.get("fallback_persist_switch", True)),
+    }
+
+
+def set_ai_fallback(enabled: bool | None = None, order: list[str] | None = None, persist_switch: bool | None = None) -> Path:
+    """Update global AI fallback settings."""
+    config = load_config()
+    ai = config.setdefault("ai", {})
+    if enabled is not None:
+        ai["auto_fallback"] = enabled
+    if order is not None:
+        ai["fallback_order"] = [_sanitize_profile_name(name) for name in order]
+    if persist_switch is not None:
+        ai["fallback_persist_switch"] = persist_switch
+    return save_config(config)
+
+
 def configure_ollama(model: str = "llama3.1", endpoint: str = "http://localhost:11434", profile: str | None = None) -> Path:
     """Configure CAIROS to use a local Ollama model."""
     config = load_config()
@@ -423,6 +452,11 @@ def ai_status() -> str:
     active_profile = config.get("active_ai_profile", "")
     if active_profile:
         lines.append(f"active_profile: {active_profile}")
+    fallback = ai_fallback_settings()
+    order = ", ".join(fallback["fallback_order"]) or "<default>"
+    lines.append(f"auto_fallback: {'enabled' if fallback['auto_fallback'] else 'disabled'}")
+    lines.append(f"fallback_order: {order}")
+    lines.append(f"fallback_persist_switch: {'yes' if fallback['fallback_persist_switch'] else 'no'}")
     if provider == "none":
         openai_hint = " && ".join(env_var_hint("OPENAI_API_KEY"))
         lines.extend([

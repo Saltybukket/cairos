@@ -6,13 +6,17 @@ from .models import Plan
 
 
 def format_plan(plan: Plan, verbose: bool = True) -> str:
-    lines = [
+    lines = []
+    if plan.notices:
+        lines.extend(plan.notices)
+        lines.append("")
+    lines.extend([
         f"Summary: {plan.summary}",
         f"Source: {plan.source}",
         f"Risk: {plan.risk}",
         f"Requires confirmation: {'yes' if plan.requires_confirmation else 'no'}",
         "Steps:",
-    ]
+    ])
     if plan.steps:
         for index, step in enumerate(plan.steps, 1):
             lines.append(f"{index}. {step.display()}")

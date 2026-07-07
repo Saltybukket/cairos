@@ -18,6 +18,8 @@ This file records notable CAIROS changes by release.
 - Fixed Windows cmd.exe directory guidance so it does not emit Unix `find`.
 - Added shell-aware directory navigation guidance and expanded `cairos find-dir`.
 - Added AI doctor/examples commands and richer provider setup docs.
+- Added automatic AI profile fallback with normalized provider failure
+  categories, fallback CLI commands, persisted switch behavior, and tests.
 - Added Windows, shell navigation, AI troubleshooting and updating docs.
 - Bumped release version to 0.5.0a1.
 

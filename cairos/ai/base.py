@@ -19,16 +19,34 @@ import re
 import subprocess
 import urllib.error
 import urllib.request
+from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any
 
-from ..config import env_var_setup_hint, load_config
+from ..config import activate_ai_profile, env_var_setup_hint, load_config
 from ..context import collect_context
 from ..models import CommandStep, Plan, VerificationStep
 from ..rules import load_rules
 
 
+@dataclass
+class AiFailure:
+    profile: str
+    provider: str
+    model: str
+    endpoint: str | None
+    status_code: int | None
+    category: str
+    message: str
+    recoverable: bool
+
+
 class AIPlannerError(RuntimeError):
     """Raised when an AI backend is missing, unreachable or returns invalid JSON."""
+
+    def __init__(self, message: str, failure: AiFailure | None = None):
+        super().__init__(message)
+        self.failure = failure
 
 
 def _system_prompt() -> str:
@@ -95,6 +113,51 @@ def _provider_context(config: dict[str, Any]) -> list[str]:
         f"api_key_env: {ai.get('api_key_env') or 'none'}",
         f"active_profile: {config.get('active_ai_profile') or '<none>'}",
     ]
+
+
+def _failure_context(config: dict[str, Any]) -> tuple[str, str, str, str | None]:
+    ai = config.get("ai", {})
+    return (
+        str(config.get("active_ai_profile") or "<current>"),
+        str(ai.get("provider", "none")),
+        str(ai.get("model") or ""),
+        str(ai.get("endpoint") or "") or None,
+    )
+
+
+def _http_category(status_code: int) -> tuple[str, bool]:
+    if status_code == 402:
+        return "insufficient_credits", True
+    if status_code == 429:
+        return "rate_limit_quota", True
+    if status_code in {502, 503, 504}:
+        return "temporary_provider", True
+    if status_code in {401, 403}:
+        return "auth", True
+    if status_code == 404:
+        return "model_unavailable", True
+    if 500 <= status_code < 600:
+        return "temporary_provider", True
+    return "provider_error", False
+
+
+def _make_failure(config: dict[str, Any], category: str, message: str, recoverable: bool, status_code: int | None = None) -> AiFailure:
+    profile, provider, model, endpoint = _failure_context(config)
+    return AiFailure(
+        profile=profile,
+        provider=provider,
+        model=model,
+        endpoint=endpoint,
+        status_code=status_code,
+        category=category,
+        message=message,
+        recoverable=recoverable,
+    )
+
+
+def _failure_from_http(exc: urllib.error.HTTPError, config: dict[str, Any], message: str) -> AiFailure:
+    category, recoverable = _http_category(int(exc.code))
+    return _make_failure(config, category, message, recoverable, status_code=int(exc.code))
 
 
 def _format_http_error(prefix: str, exc: urllib.error.HTTPError, config: dict[str, Any], body: str = "") -> str:
@@ -225,7 +288,9 @@ def _ollama_plan(request: str, config: dict[str, Any]) -> Plan:
         with urllib.request.urlopen(req, timeout=timeout) as response:
             data = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise AIPlannerError(f"Ollama backend failed: {exc}") from exc
+        message = f"Ollama backend failed: {exc}"
+        category = "network" if isinstance(exc, (urllib.error.URLError, TimeoutError)) else "provider_error"
+        raise AIPlannerError(message, failure=_make_failure(config, category, message, category == "network")) from exc
     return _parse_plan(str(data.get("response", "")))
 
 
@@ -238,7 +303,8 @@ def _openai_compatible_plan(request: str, config: dict[str, Any]) -> Plan:
     timeout = int(ai.get("timeout_seconds", 60))
     api_key = os.environ.get(key_env)
     if not api_key:
-        raise AIPlannerError(_missing_key_message(key_env))
+        message = _missing_key_message(key_env)
+        raise AIPlannerError(message, failure=_make_failure(config, "missing_key", f"missing {key_env}", True))
     payload = _build_payload(request)
     body = json.dumps(
         {
@@ -261,9 +327,11 @@ def _openai_compatible_plan(request: str, config: dict[str, Any]) -> Plan:
             data = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
-        raise AIPlannerError(_format_http_error("OpenAI-compatible backend", exc, config, body)) from exc
+        message = _format_http_error("OpenAI-compatible backend", exc, config, body)
+        raise AIPlannerError(message, failure=_failure_from_http(exc, config, message)) from exc
     except (urllib.error.URLError, TimeoutError) as exc:
-        raise AIPlannerError(_format_network_error("OpenAI-compatible backend", exc, config)) from exc
+        message = _format_network_error("OpenAI-compatible backend", exc, config)
+        raise AIPlannerError(message, failure=_make_failure(config, "network", message, True)) from exc
     except json.JSONDecodeError as exc:
         raise AIPlannerError(f"OpenAI-compatible backend failed: {exc}") from exc
     content = data["choices"][0]["message"]["content"]
@@ -279,7 +347,8 @@ def _gemini_plan(request: str, config: dict[str, Any]) -> Plan:
     timeout = int(ai.get("timeout_seconds", 60))
     api_key = os.environ.get(key_env)
     if not api_key:
-        raise AIPlannerError(_missing_key_message(key_env))
+        message = _missing_key_message(key_env)
+        raise AIPlannerError(message, failure=_make_failure(config, "missing_key", f"missing {key_env}", True))
     payload = _build_payload(request)
     prompt = payload["system"] + "\n\n" + json.dumps({"request": request, "context": payload["context"], "rules": payload["rules"]})
     body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.1}}).encode("utf-8")
@@ -294,9 +363,11 @@ def _gemini_plan(request: str, config: dict[str, Any]) -> Plan:
             data = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
-        raise AIPlannerError(_format_http_error("Gemini backend", exc, config, body)) from exc
+        message = _format_http_error("Gemini backend", exc, config, body)
+        raise AIPlannerError(message, failure=_failure_from_http(exc, config, message)) from exc
     except (urllib.error.URLError, TimeoutError) as exc:
-        raise AIPlannerError(_format_network_error("Gemini backend", exc, config)) from exc
+        message = _format_network_error("Gemini backend", exc, config)
+        raise AIPlannerError(message, failure=_make_failure(config, "network", message, True)) from exc
     except json.JSONDecodeError as exc:
         raise AIPlannerError(f"Gemini backend failed: {exc}") from exc
     text = data["candidates"][0]["content"]["parts"][0]["text"]
@@ -308,20 +379,21 @@ def _custom_command_plan(request: str, config: dict[str, Any]) -> Plan:
     command = config["ai"].get("custom_command")
     timeout = int(config["ai"].get("timeout_seconds", 60))
     if not command:
-        raise AIPlannerError("custom_command is not configured")
+        message = "custom_command is not configured"
+        raise AIPlannerError(message, failure=_make_failure(config, "invalid_config", message, False))
     payload = json.dumps(_build_payload(request))
     proc = subprocess.run(command, input=payload, text=True, shell=True, capture_output=True, timeout=timeout)
     if proc.returncode != 0:
-        raise AIPlannerError(f"custom AI command failed: {proc.stderr.strip()}")
+        message = f"custom AI command failed: {proc.stderr.strip()}"
+        raise AIPlannerError(message, failure=_make_failure(config, "custom_command", message, False))
     return _parse_plan(proc.stdout)
 
 
-def plan_with_ai(request: str) -> Plan:
-    """Plan a request with the configured AI provider."""
-    config = load_config()
+def _plan_with_config(request: str, config: dict[str, Any]) -> Plan:
     provider = config["ai"].get("provider", "none")
     if provider == "none":
-        raise AIPlannerError("No AI backend configured")
+        message = "No AI backend configured"
+        raise AIPlannerError(message, failure=_make_failure(config, "invalid_config", message, False))
     if provider == "ollama":
         return _ollama_plan(request, config)
     if provider in {"openai", "openai-compatible"}:
@@ -330,7 +402,131 @@ def plan_with_ai(request: str) -> Plan:
         return _gemini_plan(request, config)
     if provider == "custom-command":
         return _custom_command_plan(request, config)
-    raise AIPlannerError(f"Unsupported AI provider: {provider}")
+    message = f"Unsupported AI provider: {provider}"
+    raise AIPlannerError(message, failure=_make_failure(config, "invalid_config", message, False))
+
+
+def plan_with_ai(request: str) -> Plan:
+    """Plan a request with the configured AI provider only."""
+    return _plan_with_config(request, load_config())
+
+
+def _fallback_profile_names(config: dict[str, Any]) -> list[str]:
+    profiles = config.get("ai_profiles", {})
+    active = str(config.get("active_ai_profile") or "")
+    explicit = [str(name) for name in config.get("ai", {}).get("fallback_order", []) if str(name) in profiles]
+
+    def weight(name: str) -> tuple[int, str]:
+        lowered = name.lower()
+        if "openrouter-free" in lowered or lowered.endswith(":free"):
+            return (0, name)
+        if "gemini-flash" in lowered or "gemini" in lowered:
+            return (1, name)
+        if "groq" in lowered:
+            return (2, name)
+        if "ollama" in lowered or "local" in lowered:
+            return (3, name)
+        if "mini" in lowered:
+            return (4, name)
+        return (5, name)
+
+    names: list[str] = []
+    for name in [active, *explicit, *sorted(profiles, key=weight)]:
+        if name and name in profiles and name not in names:
+            names.append(name)
+    return names
+
+
+def _config_for_profile(config: dict[str, Any], name: str) -> dict[str, Any]:
+    candidate = deepcopy(config)
+    candidate["active_ai_profile"] = name
+    candidate["ai"].update(candidate.get("ai_profiles", {})[name])
+    return candidate
+
+
+def _profile_eligibility_failure(config: dict[str, Any]) -> AiFailure | None:
+    ai = config.get("ai", {})
+    provider = str(ai.get("provider", "none"))
+    model = str(ai.get("model") or "")
+    if provider == "none":
+        return _make_failure(config, "invalid_config", "provider is not configured", False)
+    if provider in {"openai", "openai-compatible", "gemini"}:
+        if not model:
+            return _make_failure(config, "invalid_config", "model is not configured", False)
+        env_name = str(ai.get("api_key_env") or "")
+        if not env_name or not os.environ.get(env_name):
+            return _make_failure(config, "missing_key", f"missing {env_name or 'api_key_env'}", True)
+    if provider == "ollama" and not model:
+        return _make_failure(config, "invalid_config", "model is not configured", False)
+    return None
+
+
+def _failure_line(failure: AiFailure) -> str:
+    status = f"HTTP {failure.status_code} " if failure.status_code is not None else ""
+    return f"{failure.profile}: {status}{failure.category} - {failure.message.splitlines()[0]}"
+
+
+def _all_failed_message(failures: list[AiFailure]) -> str:
+    lines = ["All configured AI profiles failed.", "", "Tried:"]
+    lines.extend(f"- {_failure_line(failure)}" for failure in failures)
+    lines.extend(
+        [
+            "",
+            "Run:",
+            "  cairos config ai profiles",
+            "  cairos config ai fallback status",
+            "  cairos config ai doctor",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def plan_with_ai_fallback(request: str) -> Plan:
+    """Plan with the active AI profile, falling back to other saved profiles."""
+    config = load_config()
+    ai = config.get("ai", {})
+    if not bool(ai.get("auto_fallback", True)):
+        return _plan_with_config(request, config)
+
+    names = _fallback_profile_names(config)
+    if not names:
+        return _plan_with_config(request, config)
+
+    active = str(config.get("active_ai_profile") or names[0])
+    persist = bool(ai.get("fallback_persist_switch", True))
+    failures: list[AiFailure] = []
+
+    for name in names:
+        candidate = _config_for_profile(config, name)
+        eligibility = _profile_eligibility_failure(candidate)
+        if eligibility is not None:
+            failures.append(eligibility)
+            continue
+        try:
+            plan = _plan_with_config(request, candidate)
+        except AIPlannerError as exc:
+            failure = exc.failure or _make_failure(candidate, "provider_error", str(exc), True)
+            failures.append(failure)
+            if not failure.recoverable and name == active:
+                raise
+            continue
+        if name != active:
+            first_failure = next((failure for failure in failures if failure.profile == active), failures[0] if failures else None)
+            notice_lines = ["AI profile fallback:"]
+            if first_failure:
+                status = f"{first_failure.status_code} " if first_failure.status_code is not None else ""
+                notice_lines.append(f"- {active} failed with {status}{first_failure.category}.")
+            if persist:
+                activate_ai_profile(name)
+                notice_lines.append(f"- Switched to {name}.")
+                notice_lines.append(f"Active AI profile is now: {name}")
+            else:
+                notice_lines.append(f"- Used fallback profile for this request only: {name}")
+            plan.notices.insert(0, "\n".join(notice_lines))
+        return plan
+
+    message = _all_failed_message(failures)
+    raise AIPlannerError(message, failure=failures[-1] if failures else None)
 
 
 def list_models() -> str:

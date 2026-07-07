@@ -20,7 +20,7 @@ class PlannerRoutingTests(unittest.TestCase):
                     endpoint="https://openrouter.ai/api/v1",
                     profile="openrouter-free",
                 )
-                with patch("cairos.planner.plan_with_ai", return_value=Plan(summary="AI plan", source="ai")):
+                with patch("cairos.planner.plan_with_ai_fallback", return_value=Plan(summary="AI plan", source="ai")):
                     plan = make_plan("setup this repo for a clean release")
         self.assertEqual(plan.source, "ai")
 

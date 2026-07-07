@@ -145,6 +145,18 @@ cairos config ai switch
 cairos config ai use-profile openai-mini
 ```
 
+Automatic profile fallback is enabled by default. If the active profile is
+rate-limited, out of credits, temporarily unavailable, missing a visible key, or
+points at an unavailable model, CAIROS tries another saved profile and prints a
+notice before the plan:
+
+```bash
+cairos config ai fallback status
+cairos config ai fallback disable
+cairos config ai fallback enable
+cairos config ai fallback order openrouter-free gemini-flash groq-llama
+```
+
 CAIROS stores environment variable names, never raw API keys.
 
 ## Key Locations
