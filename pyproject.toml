@@ -9,18 +9,25 @@ description = "Context-aware AI-assisted shell command planner and safety layer"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "CAIROS Developer" }]
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["cli", "shell", "terminal", "assistant", "ai", "developer-tools"]
 classifiers = [
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Topic :: Software Development",
   "Topic :: System :: Shells",
 ]
+dependencies = []
 
 [project.optional-dependencies]
-dev = []
+dev = [
+  "build",
+  "twine",
+]
 ml-router = [
   "scikit-learn>=1.4",
   "joblib>=1.3",
@@ -38,8 +45,10 @@ cairos = "cairos.cli:main"
 [project.urls]
 Homepage = "https://github.com/Saltybukket/cairos"
 Documentation = "https://github.com/Saltybukket/cairos#readme"
+Repository = "https://github.com/Saltybukket/cairos"
 Issues = "https://github.com/Saltybukket/cairos/issues"
 Source = "https://github.com/Saltybukket/cairos"
+Changelog = "https://github.com/Saltybukket/cairos/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]

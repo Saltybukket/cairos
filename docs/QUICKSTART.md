@@ -65,10 +65,10 @@ cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 cairos config ai test
 ```
 
-## Future PyPI Install
+## PyPI Install After First Publication
 
-There is no PyPI release yet. After CAIROS is published to PyPI, installation
-will be:
+There is no PyPI release yet. After the first PyPI release is published,
+installation will be:
 
 ```bash
 pipx install cairos-shell

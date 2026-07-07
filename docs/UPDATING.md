@@ -45,12 +45,18 @@ config, history, AI profiles, environment variable names, or project rules.
 
 ## Future PyPI Install
 
-There is no PyPI release yet. Future command:
+There is no PyPI release yet. After the first PyPI release, use:
 
 ```bash
 pipx install cairos-shell
 pipx upgrade cairos-shell
 ```
+
+## GitHub Actions Publishing
+
+The repository publishes through PyPI Trusted Publishing from
+`.github/workflows/publish.yml` after a GitHub Release is published. No PyPI API
+token is stored in the repository or GitHub secrets.
 
 ## Preserved Files
 

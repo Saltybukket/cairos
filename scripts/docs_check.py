@@ -47,8 +47,33 @@ def check_version_strings() -> int:
     return 0
 
 
+def check_publishing_files() -> int:
+    publish = ROOT / ".github" / "workflows" / "publish.yml"
+    ci = ROOT / ".github" / "workflows" / "ci.yml"
+    manifest = ROOT / "MANIFEST.in"
+    missing = [str(path.relative_to(ROOT)) for path in [publish, ci, manifest] if not path.exists()]
+    if missing:
+        return fail("Missing publishing files:\n" + "\n".join(f"- {item}" for item in missing))
+    text = publish.read_text(encoding="utf-8")
+    required = [
+        "release:",
+        "workflow_dispatch:",
+        "id-token: write",
+        "name: pypi",
+        "pypa/gh-action-pypi-publish@release/v1",
+    ]
+    absent = [item for item in required if item not in text]
+    if absent:
+        return fail("publish.yml is missing Trusted Publishing markers:\n" + "\n".join(f"- {item}" for item in absent))
+    forbidden = ["password:", "api-token:", "__token__"]
+    present = [item for item in forbidden if item in text]
+    if present:
+        return fail("publish.yml must not contain token/password settings:\n" + "\n".join(f"- {item}" for item in present))
+    return 0
+
+
 def main() -> int:
-    for check in [check_readme_links, check_version_strings]:
+    for check in [check_readme_links, check_version_strings, check_publishing_files]:
         code = check()
         if code:
             return code

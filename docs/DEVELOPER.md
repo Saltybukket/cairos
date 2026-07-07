@@ -57,20 +57,22 @@ confirmation.
 
 ## Release
 
-Install build tooling only when preparing a release:
+Use GitHub Actions Trusted Publishing for PyPI releases. Do not upload with a
+local PyPI token.
 
 ```bash
-python -m pip install build twine
 make check
-python -m build
-twine check dist/*
-twine upload dist/*
+make release-check
 ```
 
 Release checklist:
 
 - Bump version.
 - Update changelog.
-- Run `make secret-check`.
 - Run `make check`.
-- Tag the release.
+- Run `make release-check`.
+- Tag the release as `v<version>`.
+- Create the GitHub Release so `.github/workflows/publish.yml` publishes via
+  PyPI Trusted Publishing.
+
+See `docs/RELEASE.md` for the full process and PyPI Trusted Publisher fields.

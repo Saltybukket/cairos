@@ -20,6 +20,22 @@ class ReleasePolishTests(unittest.TestCase):
         proc = subprocess.run(["python3", "-m", "cairos.cli", "--version"], cwd=ROOT, text=True, capture_output=True, check=True)
         self.assertEqual(proc.stdout.strip(), cairos.__version__)
 
+    def test_publish_workflow_uses_trusted_publishing(self):
+        workflow = (ROOT / ".github" / "workflows" / "publish.yml").read_text(encoding="utf-8")
+        self.assertIn("id-token: write", workflow)
+        self.assertIn("name: pypi", workflow)
+        self.assertIn("pypa/gh-action-pypi-publish@release/v1", workflow)
+        self.assertNotIn("password:", workflow)
+        self.assertNotIn("api-token:", workflow)
+
+    def test_package_metadata_is_pypi_ready(self):
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn('name = "cairos-shell"', pyproject)
+        self.assertIn('cairos = "cairos.cli:main"', pyproject)
+        self.assertIn('Repository = "https://github.com/Saltybukket/cairos"', pyproject)
+        self.assertIn('Changelog = "https://github.com/Saltybukket/cairos/blob/main/CHANGELOG.md"', pyproject)
+        self.assertIn('"python-multipart"', pyproject)
+
     def test_readme_doc_links_exist(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         links = re.findall(r"\]\((docs/[^)]+\.md|CHANGELOG\.md)\)", readme)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import shlex
 from pathlib import Path
 from .models import CommandStep, Plan, VerificationStep
 from .safety import check_steps
@@ -48,16 +49,25 @@ def _execute_navigation_step(step: CommandStep, plan: Plan) -> tuple[int, list[s
     if not step.command:
         print("Empty command step.")
         return 1, []
-    proc = subprocess.run(step.command, shell=True, text=True, capture_output=True)
-    output_lines = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+    exit_code = 0
+    stderr = ""
+    if step.command.startswith("cairos find-dir "):
+        output_lines = _run_find_dir_step(step.command)
+        if not output_lines:
+            exit_code = 1
+    else:
+        proc = subprocess.run(step.command, shell=True, text=True, capture_output=True)
+        output_lines = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+        stderr = proc.stderr.strip()
+        exit_code = proc.returncode
     if output_lines:
         print("Matches:")
         for index, line in enumerate(output_lines, 1):
             print(f"{index}. {line}" if len(output_lines) > 1 else line)
     else:
         print("No matching directories found.")
-    if proc.stderr.strip():
-        print(proc.stderr.strip())
+    if stderr:
+        print(stderr)
     if len(output_lines) == 1:
         for note in plan.notes:
             if "<matched-path>" in note:
@@ -66,7 +76,22 @@ def _execute_navigation_step(step: CommandStep, plan: Plan) -> tuple[int, list[s
                 break
     elif len(output_lines) > 1:
         print("Choose one matching path and use the cd command pattern below.")
-    return proc.returncode, output_lines
+    return exit_code, output_lines
+
+
+def _run_find_dir_step(command: str) -> list[str]:
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return []
+    if len(parts) < 3 or parts[:2] != ["cairos", "find-dir"]:
+        return []
+    query = " ".join(parts[2:]).strip()
+    if not query:
+        return []
+    from .cli import _find_dirs
+
+    return [str(path) for path in _find_dirs(query, start=Path.cwd())]
 
 
 def _verify(item: VerificationStep) -> tuple[bool, str]:

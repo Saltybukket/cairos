@@ -9,6 +9,8 @@ This file records notable CAIROS changes by release.
 - Cleaned documentation and updated release/version references for 0.5.0a3.
 - Added tests for GUI dependency checks, POST token/origin behavior, security
   headers, docs links, and version consistency.
+- Added PyPI Trusted Publishing workflow, CI workflow, package manifest, release
+  checks, and PyPI-ready release documentation.
 
 ## 0.5.0a2
 

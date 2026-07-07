@@ -45,10 +45,10 @@ pipx install git+https://github.com/Saltybukket/cairos.git
 cairos quicksetup
 ```
 
-## Future PyPI Install
+## PyPI-Ready Install
 
-There is no PyPI release yet. After CAIROS is published to PyPI, installation
-will be:
+There is no PyPI release yet. The repository is prepared for PyPI Trusted
+Publishing; after the first release is published, installation will be:
 
 ```bash
 pipx install cairos-shell
