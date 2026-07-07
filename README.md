@@ -104,6 +104,19 @@ cairos run create folder docs
 Direct `cairos <task>` prints a plan. Use `cairos run <task>` to execute after
 confirmation.
 
+## Templates vs AI
+
+Simple, clear commands use offline deterministic templates. Longer fuzzy
+requests are scored for confidence; low-confidence templates step back so AI
+fallback can handle the request when configured. Every template or AI plan is
+still safety-scanned before display or execution.
+
+Debug routing decisions with:
+
+```bash
+cairos plan --debug-route <task>
+```
+
 CAIROS cannot permanently change the parent shell directory from a child
 process. Use `cairos find-dir <name>` or a shell wrapper from
 [Shell Navigation](docs/SHELL_NAVIGATION.md) for `cd` workflows.

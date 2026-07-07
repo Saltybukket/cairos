@@ -63,6 +63,26 @@ class CLIReleaseTests(unittest.TestCase):
             self.assertEqual(code, 0, err)
             self.assertIn("oop-project-ss26", out)
 
+    def test_run_navigation_prints_matches_and_cd_guidance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "oop-project-ss26"
+            target.mkdir()
+            old = os.getcwd()
+            try:
+                os.chdir(root)
+                code, out, err = self.run_cli(
+                    ["run", "change", "into", "the", "directory", "oop", "ss26", "at", "least", "its", "named", "something", "like", "that", "--yes"],
+                    home=tempfile.mkdtemp(),
+                )
+            finally:
+                os.chdir(old)
+            self.assertEqual(code, 0, err)
+            self.assertIn("Matches:", out)
+            self.assertIn("oop-project-ss26", out)
+            self.assertIn("Copy-paste command:", out)
+            self.assertIn("cannot permanently change", out)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -32,7 +32,7 @@ class TemplateParserTests(unittest.TestCase):
         self.assertIsNotNone(plan)
         assert plan is not None
         self.assertEqual(plan.source, 'template:cd-guidance')
-        self.assertIn('dir /s /b /ad *TU-Graz*', plan.steps[0].command or '')
+        self.assertIn('cairos find-dir "TU-Graz"', plan.steps[0].command or '')
         self.assertNotIn('find . -maxdepth', plan.steps[0].command or '')
         self.assertIn('parent shell', '\n'.join(plan.notes))
 
@@ -40,12 +40,11 @@ class TemplateParserTests(unittest.TestCase):
         ps = plan_from_template('go into the directory my folder mind that you are in powershell')
         self.assertIsNotNone(ps)
         assert ps is not None
-        self.assertIn('Get-ChildItem', ps.steps[0].command or '')
-        self.assertIn("'*my*'", ps.steps[0].command or '')
+        self.assertIn('cairos find-dir "my folder"', ps.steps[0].command or '')
         bash = plan_from_template('go into the directory TU-Graz mind that you are in bash')
         self.assertIsNotNone(bash)
         assert bash is not None
-        self.assertIn('find . -maxdepth 4', bash.steps[0].command or '')
+        self.assertIn('cairos find-dir "TU-Graz"', bash.steps[0].command or '')
 
     def test_fuzzy_directory_fillers_are_not_targets(self):
         examples = [
@@ -62,7 +61,7 @@ class TemplateParserTests(unittest.TestCase):
                 assert plan is not None
                 command = plan.steps[0].command or ''
                 self.assertNotIn('*something*', command)
-                self.assertIn('find . -maxdepth 4', command)
+                self.assertIn('cairos find-dir', command)
         plan = plan_from_template('go into the directory oop ss26 at least its named something like that mind that you are in bash')
         assert plan is not None
         self.assertIn('oop', plan.steps[0].command or '')
@@ -72,14 +71,12 @@ class TemplateParserTests(unittest.TestCase):
         cmd = plan_from_template('go into the directory oop ss26 or something mind that you are in windows cmd')
         self.assertIsNotNone(cmd)
         assert cmd is not None
-        self.assertIn('dir /s /b /ad *oop*ss26*', cmd.steps[0].command or '')
+        self.assertIn('cairos find-dir "oop ss26"', cmd.steps[0].command or '')
         self.assertNotIn('find . -maxdepth', cmd.steps[0].command or '')
         ps = plan_from_template('go into the directory oop ss26 or something mind that you are in powershell')
         self.assertIsNotNone(ps)
         assert ps is not None
-        self.assertIn('Get-ChildItem', ps.steps[0].command or '')
-        self.assertIn("'*oop*'", ps.steps[0].command or '')
-        self.assertIn("'*ss26*'", ps.steps[0].command or '')
+        self.assertIn('cairos find-dir "oop ss26"', ps.steps[0].command or '')
 
 
 if __name__ == '__main__':

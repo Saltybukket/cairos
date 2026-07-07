@@ -8,17 +8,73 @@ call the AI planner.  Every resulting plan is scanned by the safety layer.
 from __future__ import annotations
 
 from .ai import AIPlannerError, plan_with_ai
+import os
+
 from .config import load_config
 from .models import Plan
+from .router import RouteDecision, classify_request_complexity, score_template_candidate
 from .safety import check_steps
 from .templates import plan_from_template
 
 
+def _ai_is_configured_and_available(config: dict) -> bool:
+    ai = config["ai"]
+    provider = ai.get("provider", "none")
+    if provider == "none":
+        return False
+    if provider in {"openai", "openai-compatible", "gemini"}:
+        return bool(os.environ.get(ai.get("api_key_env") or ""))
+    return True
+
+
+def _no_reliable_template_plan(request: str, decision: RouteDecision, ai_configured: bool) -> Plan:
+    notes = [
+        "The request looks complex or ambiguous.",
+        "CAIROS avoided using a low-confidence deterministic template.",
+    ]
+    if decision.candidate_source == "template:cd-guidance" and decision.matched_terms:
+        query = " ".join(decision.matched_terms)
+        notes.append(f"Try: cairos find-dir \"{query}\"")
+    if ai_configured:
+        notes.append("An AI backend is configured but is not available in this shell. Check `cairos config ai status`.")
+    else:
+        notes.append("Configure AI fallback, or simplify the request.")
+    return Plan(
+        summary="No reliable deterministic template matched.",
+        steps=[],
+        risk="low",
+        notes=notes,
+        source="none",
+        requires_confirmation=False,
+    )
+
+
+def _fallback_or_no_match(request: str, allow_ai: bool, decision: RouteDecision, config: dict) -> Plan:
+    if allow_ai and _ai_is_configured_and_available(config):
+        try:
+            return plan_with_ai(request)
+        except AIPlannerError as exc:
+            return Plan(
+                summary="No reliable deterministic template matched, and the configured AI backend failed.",
+                steps=[],
+                risk="medium",
+                notes=[str(exc)],
+                source="none",
+                requires_confirmation=False,
+            )
+    return _no_reliable_template_plan(request, decision, ai_configured=config["ai"].get("provider", "none") != "none")
+
+
 def make_plan(request: str, allow_ai: bool = True) -> Plan:
     """Create a safe plan from a user request."""
+    config = load_config()
     plan = plan_from_template(request)
+    decision = score_template_candidate(request, plan, classify_request_complexity(request))
+    behavior = config.get("behavior", {})
+    ai_on_uncertain = bool(behavior.get("ai_on_uncertain_template", True))
+
     if plan is None:
-        if allow_ai and load_config()["ai"].get("provider", "none") != "none":
+        if allow_ai and _ai_is_configured_and_available(config):
             try:
                 plan = plan_with_ai(request)
             except AIPlannerError as exc:
@@ -46,6 +102,15 @@ def make_plan(request: str, allow_ai: bool = True) -> Plan:
                 source="none",
                 requires_confirmation=False,
             )
+
+    if decision.route == "ai" and ai_on_uncertain:
+        plan = _fallback_or_no_match(request, allow_ai, decision, config)
+    elif decision.route == "no_match":
+        plan = _fallback_or_no_match(request, allow_ai, decision, config)
+    elif plan is not None:
+        plan.template_confidence = decision.confidence
+        plan.template_warnings.extend(decision.warnings)
+        plan.matched_terms = decision.matched_terms or plan.matched_terms
 
     safety = check_steps(plan.steps)
     if safety.risk != "low":

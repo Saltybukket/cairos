@@ -78,6 +78,9 @@ class Plan:
     requires_confirmation: bool = True
     confirmation_phrase: str = "yes"
     verification: list[VerificationStep] = field(default_factory=list)
+    template_confidence: float | None = None
+    template_warnings: list[str] = field(default_factory=list)
+    matched_terms: list[str] = field(default_factory=list)
 
     @property
     def commands(self) -> list[str]:

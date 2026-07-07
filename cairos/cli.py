@@ -50,6 +50,7 @@ from .history import append_history, clear_history, format_history, history_path
 from .planner import make_plan
 from .preview import diff_plan, preview_plan
 from .rules import init_global_rules, init_local_rules, local_rules_path, rules_json, set_rule
+from .router import classify_request_complexity, format_route_debug, score_template_candidate
 from .safety import check_command
 from .shell_utils import clean_target_name, cd_command_for_path, fuzzy_search_terms, path_depth, strip_fuzzy_fillers
 from .text import looks_like_shell_command
@@ -61,6 +62,8 @@ USAGE = """CAIROS — Context-Aware Intelligent Runtime Operating Shell
 Usage:
   cairos <task in natural language>
   cairos plan <task>
+  cairos plan --debug-route <task>
+  cairos plan --debug-match <task>
   cairos expand <task>
   cairos run <task> [--yes]
   cairos --dry-run <task>
@@ -166,6 +169,12 @@ def _handle_plan(args: list[str]) -> int:
     if args[0] == "--debug-match":
         from .templates import debug_match_report
         print(debug_match_report(_join(args[1:])))
+        return 0
+    if args[0] == "--debug-route":
+        from .templates import plan_from_template
+        request = _join(args[1:])
+        decision = score_template_candidate(request, plan_from_template(request), classify_request_complexity(request))
+        print(format_route_debug(request, decision))
         return 0
     print(format_plan(make_plan(_join(args))))
     return 0
@@ -446,7 +455,7 @@ def _find_dirs(name: str, max_depth: int = 4, start: Path | None = None, exact: 
     terms = fuzzy_search_terms(cleaned)
     compare_terms = [term.lower() for term in terms] if ignore_case else terms
     scanned = 0
-    ignored = {"appdata", ".git", ".venv", "venv", "env", "node_modules", ".local", "library", "onedrive"}
+    ignored = {"appdata", ".git", ".venv", "venv", "env", "node_modules", "site-packages", ".local", "library", "onedrive"}
     matches: list[Path] = []
 
     def is_match(entry: Path) -> bool:

@@ -28,7 +28,11 @@ FUZZY_FILLER_PATTERNS = [
     r"\boder\s+so\b",
     r"\bglaube\s+ich\b",
 ]
-STOP_WORDS = {"the", "a", "an", "directory", "folder", "dir", "into", "to", "go", "cd", "change", "find"}
+STOP_WORDS = {
+    "the", "a", "an", "directory", "folder", "dir", "into", "to", "go", "cd", "change",
+    "cahnge", "find", "search", "named", "called", "something", "like", "that", "at",
+    "least", "its", "it's", "current", "working", "shell", "parent", "please", "pls",
+}
 
 
 def shell_from_request(request: str, default: str | None = None) -> str:
@@ -56,6 +60,7 @@ def clean_target_name(value: str) -> str:
 def strip_fuzzy_fillers(value: str) -> str:
     """Remove uncertainty/filler language from a possible directory target."""
     cleaned = value
+    cleaned = re.sub(r"\s+-\s+.*$", " ", cleaned)
     for pattern in FUZZY_FILLER_PATTERNS:
         cleaned = re.sub(pattern, " ", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
@@ -74,6 +79,20 @@ def fuzzy_search_terms(value: str) -> list[str]:
     return terms
 
 
+def extract_navigation_query(request: str) -> str:
+    """Extract a likely directory query from navigation wording."""
+    patterns = [
+        r"(?:directory|folder|dir)\s+(.+?)(?:\s+mind\s+that|\s+using\s+|\s+from\s+here|$)",
+        r"\b(?:go|cd|change|cahnge)\s+(?:into|to)\s+(?:the\s+)?(.+?)(?:\s+mind\s+that|\s+using\s+|\s+from\s+here|$)",
+        r"\bfind\s+(?:the\s+)?(?:directory|folder|dir)\s+(.+?)$",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, request, flags=re.IGNORECASE)
+        if match:
+            return strip_fuzzy_fillers(match.group(1))
+    return strip_fuzzy_fillers(request)
+
+
 def is_safe_search_name(value: str) -> bool:
     return bool(value) and not UNSAFE_SEARCH_CHARS_RE.search(value)
 
@@ -85,6 +104,11 @@ def quote_for_shell(value: str, shell: str) -> str:
     if shell == "powershell":
         return "'" + value.replace("'", "''") + "'"
     return shlex.quote(value)
+
+
+def quote_cli_arg(value: str) -> str:
+    """Quote a CLI argument in a form that works for common shells."""
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def directory_search_command(name: str, shell: str, max_depth: int = 4) -> str:

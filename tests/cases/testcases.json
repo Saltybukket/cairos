@@ -1252,10 +1252,10 @@
   {
     "name": "Setup with task words routes to planner",
     "command": ["python3", "-m", "cairos.cli", "setup", "this", "repo"],
-    "expected_contains": ["Source: template:repo-setup", "mkdir -p src", "mkdir -p tests", "mkdir -p docs"],
+    "expected_contains": ["Summary: No reliable deterministic template matched.", "Source: none", "CAIROS avoided using a low-confidence deterministic template"],
     "expected_not_contains": ["CAIROS Setup"],
     "expected_stderr": "",
-    "expected_exit": 0
+    "expected_exit": 1
   },
   {
     "name": "Say hello uses deterministic echo template",
@@ -1282,7 +1282,7 @@
   {
     "name": "Directory change request explains shell limitation",
     "command": ["python3", "-m", "cairos.cli", "plan", "go", "into", "directory", "TU-Graz", "using", "the", "find", "command"],
-    "expected_contains": ["Source: template:cd-guidance", "A child process cannot permanently change the parent shell's working directory", "find . -maxdepth 4"],
+    "expected_contains": ["Source: template:cd-guidance", "A child process cannot permanently change the parent shell's working directory", "cairos find-dir \"TU-Graz\""],
     "expected_not_contains": ["cd TU-Graz"],
     "expected_stderr": "",
     "expected_exit": 0
@@ -1313,8 +1313,24 @@
   {
     "name": "Fuzzy directory filler is ignored",
     "command": ["python3", "-m", "cairos.cli", "plan", "go", "into", "the", "directory", "oop", "ss26", "at", "least", "its", "named", "something", "like", "that"],
-    "expected_contains": ["Source: template:cd-guidance", "oop", "ss26"],
-    "expected_not_contains": ["*something*"],
+    "expected_contains": ["Source: template:cd-guidance", "cairos find-dir \"oop ss26\"", "oop", "ss26"],
+    "expected_not_contains": ["*something*", "*current*", "*-*"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Exact fuzzy current directory regression avoids garbage terms",
+    "command": ["python3", "-m", "cairos.cli", "plan", "change", "into", "the", "directory", "oop", "ss26", "at", "least", "its", "named", "something", "like", "that", "-", "change", "the", "current", "directory"],
+    "expected_contains": ["Source: template:cd-guidance", "cairos find-dir \"oop ss26\"", "oop", "ss26"],
+    "expected_not_contains": ["*something*", "*current*", "*-*", "site-packages"],
+    "expected_stderr": "",
+    "expected_exit": 0
+  },
+  {
+    "name": "Debug route reports fuzzy directory routing",
+    "command": ["python3", "-m", "cairos.cli", "plan", "--debug-route", "change", "into", "the", "directory", "oop", "ss26", "at", "least", "its", "named", "something", "like", "that", "-", "change", "the", "current", "directory"],
+    "expected_contains": ["Route debug", "complexity:", "candidate:", "confidence:", "route:", "ignored tokens:", "oop", "ss26"],
+    "expected_not_contains": ["matched terms: something", "matched terms: current"],
     "expected_stderr": "",
     "expected_exit": 0
   },

@@ -31,7 +31,13 @@ Use match debugging for template work:
 
 ```bash
 cairos plan --debug-match create a small bash script that prints current folder
+cairos plan --debug-route change into the directory oop ss26 at least its named something like that
 ```
+
+Templates should only win when confidence is high. Broad requests such as
+release preparation, fuzzy navigation, or "fix everything" workflows should
+step back to AI fallback or a clear no-match. Keep routing heuristics in
+`cairos/router.py` and target extraction helpers in `cairos/shell_utils.py`.
 
 ## Release
 

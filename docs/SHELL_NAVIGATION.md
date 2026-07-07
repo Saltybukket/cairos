@@ -11,11 +11,14 @@ cairos find-dir "my folder" --max-depth 4 --from .
 cairos find-dir TU-Graz --exact
 ```
 
-Natural-language guidance is shell-aware:
+Natural-language guidance routes through the same bounded Python helper:
 
-```cmd
-cairos plan go into the directory TU-Graz. mind that you are in windows cmd
+```bash
+cairos plan go into the directory oop ss26 at least its named something like that
 ```
+
+This avoids raw shell `find` portability issues and skips ignored directories
+such as `.git`, `.venv`, `node_modules`, and `site-packages`.
 
 ## Wrappers
 

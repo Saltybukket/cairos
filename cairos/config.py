@@ -35,6 +35,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "send_context_to_ai": True,
         "max_context_files": 80,
         "default_confirmation_phrase": "yes",
+        "template_confidence_threshold": 0.8,
+        "ai_on_uncertain_template": True,
+        "ai_router_enabled": False,
     },
 }
 

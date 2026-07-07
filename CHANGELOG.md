@@ -4,6 +4,11 @@ This file records notable CAIROS changes by release.
 
 ## 0.5.0a1
 
+- Added template confidence routing and `cairos plan --debug-route`.
+- Reduced aggressive template matching for broad or fuzzy requests.
+- Added AI fallback/no-match behavior for uncertain deterministic matches.
+- Improved fuzzy directory navigation handling and routed cd guidance through `cairos find-dir`.
+- Improved navigation `run` output with matches and copy-paste cd guidance.
 - Added safe update/upgrade guidance with config/profile preservation messaging.
 - Added config schema versioning, atomic writes, migrations and timestamped backups.
 - Added first-class OpenRouter free setup and provider examples.

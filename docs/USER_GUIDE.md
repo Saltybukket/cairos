@@ -7,7 +7,7 @@ not cover a request.
 Pipeline:
 
 ```text
-request -> context -> deterministic template -> optional AI fallback -> safety scan -> plan -> explicit execution
+request -> route/confidence check -> deterministic template or optional AI fallback -> safety scan -> plan -> explicit execution
 ```
 
 ## Commands
@@ -59,7 +59,19 @@ notes:
 
 ```bash
 cairos plan create python project crawler with venv git pytest
+cairos plan --debug-route change into the directory oop ss26 at least its named something like that
 ```
+
+## How CAIROS Chooses Templates vs AI
+
+CAIROS prefers deterministic templates for short, clear commands such as
+`create folder docs`, `say hello`, `list wsl distros`, and specific project
+scaffolds. A lightweight router scores longer, fuzzy, typo-heavy or
+multi-clause requests. If a template candidate is low-confidence, CAIROS steps
+back and uses AI fallback when configured; otherwise it returns a helpful
+no-match instead of forcing a brittle template.
+
+All resulting plans, including AI plans, still go through safety scanning.
 
 Use `expand` when you want shell-equivalent deterministic output only:
 

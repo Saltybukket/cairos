@@ -17,7 +17,7 @@ import shlex
 
 from .models import CommandStep, Plan, VerificationStep
 from .rules import load_rules
-from .shell_utils import clean_target_name, cd_command_for_path, directory_search_command, is_safe_search_name, shell_from_request, strip_fuzzy_fillers
+from .shell_utils import cd_command_for_path, extract_navigation_query, fuzzy_search_terms, is_safe_search_name, quote_cli_arg, shell_from_request
 from .text import candidate_words, has_all, has_concept, tokenize
 
 PROJECT_NAME_RE = r"[a-zA-Z][a-zA-Z0-9_-]*"
@@ -1126,12 +1126,7 @@ def _cd_warning_plan(request: str) -> Plan | None:
         or "using the find command" in text and "directory" in text
     ):
         return None
-    match = re.search(r"(?:directory|folder|dir)\s+(.+?)(?:\s+mind\s+that|\s+using\s+|\s+from\s+here|$)", request, flags=re.IGNORECASE)
-    if not match:
-        match = re.search(r"\b(?:go|cd|change)\s+(?:into|to)\s+(?:the\s+)?(.+?)(?:\s+mind\s+that|\s+using\s+|\s+from\s+here|$)", request, flags=re.IGNORECASE)
-    if not match:
-        match = re.search(r"\bfind\s+(?:the\s+)?(?:directory|folder|dir)\s+(.+?)$", request, flags=re.IGNORECASE)
-    name = strip_fuzzy_fillers(match.group(1) if match else (_extract_named_value(request, "any") or "<name>"))
+    name = extract_navigation_query(request)
     shell = shell_from_request(request)
     if not is_safe_search_name(name):
         return Plan(
@@ -1142,13 +1137,14 @@ def _cd_warning_plan(request: str) -> Plan | None:
             notes=["Directory names for shell search guidance must not contain shell metacharacters."],
             source="template:cd-guidance",
         )
+    terms = fuzzy_search_terms(name)
     return Plan(
         summary="Explain how to change directories from the parent shell.",
         steps=[
             CommandStep(
                 kind="command",
-                command=directory_search_command(name, shell),
-                description="Print matching directory paths; use a shell wrapper or copy a cd command.",
+                command=f"cairos find-dir {quote_cli_arg(name)}",
+                description="Find matching directory paths with CAIROS' bounded Python helper.",
             )
         ],
         risk="low",
@@ -1160,6 +1156,8 @@ def _cd_warning_plan(request: str) -> Plan | None:
             f"After you identify the matching path, run: {cd_command_for_path('<matched-path>', shell)}",
         ],
         source="template:cd-guidance",
+        template_confidence=0.88 if terms else 0.35,
+        matched_terms=terms,
     )
 
 

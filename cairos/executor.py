@@ -44,6 +44,31 @@ def _execute_step(step: CommandStep) -> int:
     return 1
 
 
+def _execute_navigation_step(step: CommandStep, plan: Plan) -> tuple[int, list[str]]:
+    if not step.command:
+        print("Empty command step.")
+        return 1, []
+    proc = subprocess.run(step.command, shell=True, text=True, capture_output=True)
+    output_lines = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+    if output_lines:
+        print("Matches:")
+        for index, line in enumerate(output_lines, 1):
+            print(f"{index}. {line}" if len(output_lines) > 1 else line)
+    else:
+        print("No matching directories found.")
+    if proc.stderr.strip():
+        print(proc.stderr.strip())
+    if len(output_lines) == 1:
+        for note in plan.notes:
+            if "<matched-path>" in note:
+                print("Copy-paste command:")
+                print(note.split("run:", 1)[-1].strip().replace("<matched-path>", output_lines[0]))
+                break
+    elif len(output_lines) > 1:
+        print("Choose one matching path and use the cd command pattern below.")
+    return proc.returncode, output_lines
+
+
 def _verify(item: VerificationStep) -> tuple[bool, str]:
     if item.kind == "file_exists":
         return Path(item.target).is_file(), f"file exists: {item.target}"
@@ -89,12 +114,20 @@ def execute_plan(plan: Plan, yes: bool = False) -> int:
             print("Aborted.")
             return 130
 
+    navigation_exit_code: int | None = None
     for step in plan.steps:
         sys.stdout.flush()
-        exit_code = _execute_step(step)
+        if plan.source == "template:cd-guidance" and step.kind == "command" and (step.command or "").startswith("cairos find-dir "):
+            exit_code, _ = _execute_navigation_step(step, plan)
+            navigation_exit_code = exit_code
+        else:
+            exit_code = _execute_step(step)
         if exit_code != 0:
-            print(f"Step failed with exit code {exit_code}: {step.display()}")
-            return exit_code
+            if plan.source != "template:cd-guidance":
+                print(f"Step failed with exit code {exit_code}: {step.display()}")
+                return exit_code
+            navigation_exit_code = exit_code
+            break
 
     if plan.verification:
         print("Verification:")
@@ -110,6 +143,8 @@ def execute_plan(plan: Plan, yes: bool = False) -> int:
         print("Next:")
         for note in plan.notes:
             print(f"- {note}")
+        if navigation_exit_code not in {None, 0}:
+            return navigation_exit_code
 
     print("Done.")
     return 0

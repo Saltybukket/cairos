@@ -44,6 +44,27 @@ cairos config ai use-ollama llama3.1 --profile ollama-local
 cairos config ai use-gemini gemini-2.5-flash --profile gemini-flash
 ```
 
+## Template matched the wrong thing
+
+Use route debugging:
+
+```bash
+cairos plan --debug-route <task>
+```
+
+If the task is fuzzy or broad, simplify it or configure AI fallback:
+
+```bash
+cairos config ai status
+cairos config ai use-profile openrouter-free
+```
+
+For directory search, bypass natural language parsing:
+
+```bash
+cairos find-dir "oop ss26"
+```
+
 ## Gemini model not found
 
 ```bash
