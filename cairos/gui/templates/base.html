@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CAIROS GUI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body class="min-h-screen bg-zinc-50 text-zinc-950">
+    <div class="min-h-screen grid grid-cols-1 lg:grid-cols-[240px_1fr]">
+      <aside class="bg-zinc-950 text-zinc-50 p-5 lg:min-h-screen">
+        <div class="text-lg font-semibold tracking-wide">CAIROS</div>
+        <div class="mt-1 text-xs text-zinc-400">local shell companion</div>
+        <nav class="mt-7 space-y-1">
+          <button class="nav-button" hx-get="/partials/overview" hx-target="#main-panel" hx-swap="innerHTML">Overview</button>
+          <button class="nav-button" hx-get="/partials/profiles" hx-target="#main-panel" hx-swap="innerHTML">AI Profiles</button>
+          <button class="nav-button" hx-get="/partials/provider-setup" hx-target="#main-panel" hx-swap="innerHTML">Add Provider</button>
+          <button class="nav-button" hx-get="/partials/fallback" hx-target="#main-panel" hx-swap="innerHTML">Fallback</button>
+          <button class="nav-button" hx-get="/partials/doctor" hx-target="#main-panel" hx-swap="innerHTML">Doctor</button>
+          <button class="nav-button" hx-get="/partials/update" hx-target="#main-panel" hx-swap="innerHTML">Updates</button>
+        </nav>
+        <div class="mt-8 rounded-md border border-zinc-800 p-3 text-xs text-zinc-400">
+          <div>Version {{ state.version }}</div>
+          <div class="mt-1">Bound locally</div>
+        </div>
+      </aside>
+      <main class="p-4 sm:p-6 lg:p-8">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </body>
+</html>
+

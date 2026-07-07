@@ -1,0 +1,10 @@
+{% if alert %}
+<div class="mb-4 rounded-md border px-4 py-3 text-sm
+  {% if alert.level == 'error' %}border-red-200 bg-red-50 text-red-800
+  {% elif alert.level == 'warning' %}border-amber-200 bg-amber-50 text-amber-900
+  {% elif alert.level == 'info' %}border-sky-200 bg-sky-50 text-sky-900
+  {% else %}border-emerald-200 bg-emerald-50 text-emerald-900{% endif %}">
+  {{ alert.message }}
+</div>
+{% endif %}
+

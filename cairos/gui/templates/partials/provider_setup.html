@@ -1,0 +1,55 @@
+<section id="provider-panel">
+  {% include "partials/alerts.html" %}
+  <h1 class="text-2xl font-semibold">Add Provider</h1>
+  <p class="mt-1 text-sm text-zinc-600">Profiles store provider settings and environment variable names, never raw keys.</p>
+  <div class="mt-6 grid gap-4 xl:grid-cols-2">
+    <form class="panel space-y-3" hx-post="/profiles/create/openrouter-free" hx-target="#provider-panel" hx-swap="outerHTML">
+      <h2 class="section-title">OpenRouter Free</h2>
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label">Profile name<input class="field" name="profile_name" value="openrouter-free"></label>
+      <div class="hint">OPENROUTER_API_KEY: {{ "available" if state.profiles | selectattr("api_key_env", "equalto", "OPENROUTER_API_KEY") | list else "configure in shell" }}</div>
+      <button class="primary-button">Create Profile</button>
+    </form>
+    <form class="panel space-y-3" hx-post="/profiles/create/gemini" hx-target="#provider-panel" hx-swap="outerHTML">
+      <h2 class="section-title">Gemini</h2>
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label">Profile name<input class="field" name="profile_name" value="gemini-flash"></label>
+      <label class="field-label">Model<input class="field" name="model" value="gemini-2.5-flash"></label>
+      <label class="field-label">API key env<input class="field" name="api_key_env" value="GEMINI_API_KEY"></label>
+      <button class="primary-button">Create Profile</button>
+    </form>
+    <form class="panel space-y-3" hx-post="/profiles/create/groq" hx-target="#provider-panel" hx-swap="outerHTML">
+      <h2 class="section-title">Groq</h2>
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label">Profile name<input class="field" name="profile_name" value="groq-llama"></label>
+      <label class="field-label">Model<input class="field" name="model" value="llama-3.1-8b-instant"></label>
+      <label class="field-label">API key env<input class="field" name="api_key_env" value="GROQ_API_KEY"></label>
+      <button class="primary-button">Create Profile</button>
+    </form>
+    <form class="panel space-y-3" hx-post="/profiles/create/openai" hx-target="#provider-panel" hx-swap="outerHTML">
+      <h2 class="section-title">OpenAI Compatible</h2>
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label">Profile name<input class="field" name="profile_name" value="openai-mini"></label>
+      <label class="field-label">Model<input class="field" name="model" value="gpt-4.1-mini"></label>
+      <label class="field-label">Endpoint<input class="field" name="endpoint" value="https://api.openai.com/v1"></label>
+      <label class="field-label">API key env<input class="field" name="api_key_env" value="OPENAI_API_KEY"></label>
+      <button class="primary-button">Create Profile</button>
+    </form>
+    <form class="panel space-y-3" hx-post="/profiles/create/ollama" hx-target="#provider-panel" hx-swap="outerHTML">
+      <h2 class="section-title">Ollama Local</h2>
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label">Profile name<input class="field" name="profile_name" value="ollama-local"></label>
+      <label class="field-label">Model<input class="field" name="model" value="llama3.1"></label>
+      <label class="field-label">Endpoint<input class="field" name="endpoint" value="http://localhost:11434"></label>
+      <button class="primary-button">Create Profile</button>
+    </form>
+    <div class="panel">
+      <h2 class="section-title">Shell setup examples</h2>
+      <pre class="mt-3 whitespace-pre-wrap rounded-md bg-zinc-950 p-4 text-xs text-zinc-50">export OPENROUTER_API_KEY="your-key"
+export GEMINI_API_KEY="your-key"
+export GROQ_API_KEY="your-key"
+export OPENAI_API_KEY="your-key"</pre>
+    </div>
+  </div>
+</section>
+

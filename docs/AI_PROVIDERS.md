@@ -4,6 +4,9 @@ CAIROS stores environment variable names, never raw API keys. Use
 `cairos config ai examples`, `cairos config ai doctor`, and
 `cairos config ai test` after configuring a provider.
 
+The optional local GUI exposes the same provider setup and profile management
+flows through `cairos gui`; see `docs/GUI.md`.
+
 | Provider | Endpoint | Env var | Notes |
 | --- | --- | --- | --- |
 | OpenRouter free | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` | OpenAI-compatible. `openrouter/free` routes to available free models. Limits and availability can change. |

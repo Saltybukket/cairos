@@ -1,0 +1,98 @@
+.nav-button {
+  display: block;
+  width: 100%;
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  font-size: 0.9rem;
+  color: rgb(228 228 231);
+}
+.nav-button:hover {
+  background: rgb(39 39 42);
+}
+.panel {
+  border: 1px solid rgb(228 228 231);
+  border-radius: 8px;
+  background: white;
+  padding: 1rem;
+}
+.label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: rgb(113 113 122);
+  font-weight: 700;
+}
+.value {
+  margin-top: 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+.mono {
+  margin-top: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  color: rgb(63 63 70);
+  overflow-wrap: anywhere;
+}
+.primary-button, .secondary-button, .table-button {
+  border-radius: 6px;
+  padding: 0.48rem 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.primary-button {
+  background: rgb(24 24 27);
+  color: white;
+}
+.secondary-button, .table-button {
+  border: 1px solid rgb(212 212 216);
+  background: white;
+  color: rgb(39 39 42);
+}
+.table-button {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+}
+.badge-ok, .badge-warn, .badge-neutral {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.badge-ok {
+  background: rgb(220 252 231);
+  color: rgb(22 101 52);
+}
+.badge-warn {
+  background: rgb(254 243 199);
+  color: rgb(146 64 14);
+}
+.badge-neutral {
+  background: rgb(244 244 245);
+  color: rgb(63 63 70);
+}
+.field-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: rgb(63 63 70);
+}
+.field {
+  margin-top: 0.3rem;
+  width: 100%;
+  border: 1px solid rgb(212 212 216);
+  border-radius: 6px;
+  padding: 0.48rem 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+.section-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.hint {
+  font-size: 0.8rem;
+  color: rgb(82 82 91);
+}

@@ -1,0 +1,25 @@
+<section>
+  {% include "partials/alerts.html" %}
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold">Overview</h1>
+      <p class="text-sm text-zinc-600">Local CAIROS status, paths, and reliability settings.</p>
+    </div>
+    <form hx-post="/doctor/run" hx-target="#main-panel" hx-swap="innerHTML">
+      <input type="hidden" name="token" value="{{ token }}">
+      <button class="primary-button">Run Doctor</button>
+    </form>
+  </div>
+  <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div class="panel"><div class="label">Version</div><div class="value">{{ state.version }}</div></div>
+    <div class="panel"><div class="label">Active AI Profile</div><div class="value">{{ state.active_profile }}</div></div>
+    <div class="panel"><div class="label">Auto Fallback</div><div class="value">{{ "enabled" if state.fallback_enabled else "disabled" }}</div></div>
+    <div class="panel md:col-span-2"><div class="label">Config Path</div><div class="mono">{{ state.config_path }}</div></div>
+    <div class="panel"><div class="label">Detected Shell</div><div class="value">{{ state.shell }}</div></div>
+    <div class="panel md:col-span-2"><div class="label">History Path</div><div class="mono">{{ state.history_path }}</div></div>
+    <div class="panel"><div class="label">Platform</div><div class="value">{{ state.platform }}</div></div>
+    <div class="panel md:col-span-2"><div class="label">Project Rules</div><div class="mono">{{ state.project_rules_path }}</div></div>
+    <div class="panel"><div class="label">Command Path</div><div class="mono">{{ state.command_path }}</div></div>
+  </div>
+</section>
+

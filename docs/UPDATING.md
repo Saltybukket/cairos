@@ -8,6 +8,13 @@ cairos update
 
 CAIROS prints the recommended update command for the current install mode.
 
+If you use the optional GUI through pipx injection, update CAIROS first and then
+re-run the injection command if the pipx environment was recreated:
+
+```bash
+pipx inject cairos-shell fastapi uvicorn jinja2 python-multipart
+```
+
 ## GitHub pipx Install
 
 Current public install:

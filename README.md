@@ -94,6 +94,8 @@ cairos install-info
 ```bash
 cairos
 cairos templates
+cairos gui --check
+cairos gui
 cairos templates system
 cairos plan create cpp mini project engine with class Player and main
 cairos plan list wsl distros
@@ -103,6 +105,26 @@ cairos run create folder docs
 
 Direct `cairos <task>` prints a plan. Use `cairos run <task>` to execute after
 confirmation.
+
+## Optional Local Web GUI
+
+Install the optional GUI dependencies, then launch a localhost-only dashboard:
+
+```bash
+pipx inject cairos-shell fastapi uvicorn jinja2 python-multipart
+cairos gui --check
+cairos gui
+```
+
+For editable development installs:
+
+```bash
+python -m pip install -e ".[gui]"
+```
+
+The GUI shows config paths, AI profiles, provider setup, fallback settings,
+doctor output, and update/backup guidance. It binds locally, uses a temporary
+session token for state-changing POST requests, and never displays raw API keys.
 
 ## Templates vs AI
 
@@ -197,6 +219,7 @@ Optional project-local rules:
 - [User Guide](docs/USER_GUIDE.md)
 - [AI Setup](docs/AI_SETUP.md)
 - [AI Providers](docs/AI_PROVIDERS.md)
+- [Local Web GUI](docs/GUI.md)
 - [Windows Guide](docs/WINDOWS.md)
 - [Shell Navigation](docs/SHELL_NAVIGATION.md)
 - [Request Router](docs/ROUTER.md)

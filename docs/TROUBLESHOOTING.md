@@ -4,6 +4,7 @@ This file lists common CAIROS setup and usage problems with fixes.
 
 For AI provider HTTP errors, see `docs/TROUBLESHOOTING_AI.md`.
 For updates and config backups, see `docs/UPDATING.md`.
+For the optional local web GUI, see `docs/GUI.md`.
 
 ## `cairos` command not found
 
@@ -137,3 +138,23 @@ CAIROS installed with pipx. Disable it with:
 
 `cairos shell install zsh` currently prints an optional zsh snippet. It does not
 modify `~/.zshrc` unless a future version asks for confirmation.
+
+## GUI dependencies missing
+
+Install optional GUI dependencies:
+
+```bash
+pipx inject cairos-shell fastapi uvicorn jinja2 python-multipart
+```
+
+For editable development installs:
+
+```bash
+python -m pip install -e ".[gui]"
+```
+
+Then run:
+
+```bash
+cairos gui --check
+```

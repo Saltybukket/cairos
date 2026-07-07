@@ -1,0 +1,45 @@
+<section id="fallback-panel">
+  {% include "partials/alerts.html" %}
+  <h1 class="text-2xl font-semibold">Fallback</h1>
+  <p class="mt-1 text-sm text-zinc-600">Fallback tries another saved AI profile when the active provider is temporarily unavailable.</p>
+  <div class="mt-6 grid gap-4 lg:grid-cols-2">
+    <div class="panel">
+      <div class="label">Auto fallback</div>
+      <div class="mt-2 text-xl font-semibold">{{ "enabled" if state.fallback_enabled else "disabled" }}</div>
+      <div class="mt-4 flex gap-2">
+        <form hx-post="/fallback/toggle" hx-target="#fallback-panel" hx-swap="outerHTML">
+          <input type="hidden" name="token" value="{{ token }}">
+          <input type="hidden" name="enabled" value="true">
+          <button class="primary-button">Enable</button>
+        </form>
+        <form hx-post="/fallback/toggle" hx-target="#fallback-panel" hx-swap="outerHTML">
+          <input type="hidden" name="token" value="{{ token }}">
+          <input type="hidden" name="enabled" value="false">
+          <button class="secondary-button">Disable</button>
+        </form>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="label">Persist switch</div>
+      <div class="mt-2 text-xl font-semibold">{{ "enabled" if state.fallback_persist_switch else "disabled" }}</div>
+      <div class="mt-4 flex gap-2">
+        <form hx-post="/fallback/persist" hx-target="#fallback-panel" hx-swap="outerHTML">
+          <input type="hidden" name="token" value="{{ token }}">
+          <input type="hidden" name="enabled" value="true">
+          <button class="primary-button">Enable</button>
+        </form>
+        <form hx-post="/fallback/persist" hx-target="#fallback-panel" hx-swap="outerHTML">
+          <input type="hidden" name="token" value="{{ token }}">
+          <input type="hidden" name="enabled" value="false">
+          <button class="secondary-button">Disable</button>
+        </form>
+      </div>
+    </div>
+    <form class="panel lg:col-span-2" hx-post="/fallback/reorder" hx-target="#fallback-panel" hx-swap="outerHTML">
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label">Fallback order<input class="field" name="order" value="{{ state.fallback_order | join(' ') }}" placeholder="openrouter-free gemini-flash groq-llama"></label>
+      <button class="mt-3 primary-button">Save Order</button>
+    </form>
+  </div>
+</section>
+

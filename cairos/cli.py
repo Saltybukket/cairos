@@ -75,6 +75,7 @@ Usage:
   cairos check <shell command | natural language task>
   cairos context [--json]
   cairos find-dir <name>
+  cairos gui [--host 127.0.0.1] [--port 0] [--no-open] [--debug] [--check]
   cairos update [--check|--print-command]
   cairos backup-config
   cairos config show
@@ -1201,7 +1202,7 @@ def _handle_quicksetup() -> int:
 COMPLETION_COMMANDS = [
     "plan", "run", "expand", "preview", "diff", "explain", "check", "context",
     "config", "rules", "doctor", "install-info", "quicksetup", "setup",
-    "templates", "history", "shell", "completion", "find-dir", "init", "update", "upgrade", "backup-config",
+    "templates", "history", "shell", "completion", "find-dir", "gui", "init", "update", "upgrade", "backup-config",
 ]
 
 
@@ -1444,6 +1445,9 @@ def _main_impl(argv: list[str] | None = None) -> int:
         return _handle_config_ai(rest)
     if command == "find-dir":
         return _handle_find_dir(rest)
+    if command == "gui":
+        from .gui.server import handle_gui_command
+        return handle_gui_command(rest)
     if command == "config":
         return _handle_config(rest)
     if command in {"update", "upgrade"}:

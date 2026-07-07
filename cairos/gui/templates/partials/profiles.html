@@ -1,0 +1,55 @@
+<section id="profiles-panel">
+  {% include "partials/alerts.html" %}
+  <div class="flex items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold">AI Profiles</h1>
+      <p class="text-sm text-zinc-600">Environment variables are shown by name and availability only.</p>
+    </div>
+    <button class="secondary-button" hx-get="/partials/provider-setup" hx-target="#main-panel" hx-swap="innerHTML">Add Provider</button>
+  </div>
+  <div class="mt-6 overflow-x-auto rounded-md border border-zinc-200 bg-white">
+    <table class="min-w-full text-left text-sm">
+      <thead class="bg-zinc-100 text-xs uppercase text-zinc-600">
+        <tr>
+          <th class="px-4 py-3">Active</th>
+          <th class="px-4 py-3">Name</th>
+          <th class="px-4 py-3">Provider</th>
+          <th class="px-4 py-3">Model</th>
+          <th class="px-4 py-3">Endpoint</th>
+          <th class="px-4 py-3">API key env</th>
+          <th class="px-4 py-3">Key</th>
+          <th class="px-4 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-zinc-100">
+        {% for profile in state.profiles %}
+        <tr>
+          <td class="px-4 py-3">{% if profile.active %}<span class="badge-ok">active</span>{% endif %}</td>
+          <td class="px-4 py-3 font-medium">{{ profile.name }}</td>
+          <td class="px-4 py-3">{{ profile.provider }}</td>
+          <td class="px-4 py-3">{{ profile.model or "not set" }}</td>
+          <td class="px-4 py-3 max-w-xs truncate">{{ profile.endpoint or "not set" }}</td>
+          <td class="px-4 py-3">{{ profile.api_key_env or "none" }}</td>
+          <td class="px-4 py-3">
+            {% if profile.local %}<span class="badge-neutral">local</span>
+            {% elif profile.key_available %}<span class="badge-ok">available</span>
+            {% else %}<span class="badge-warn">missing</span>{% endif %}
+          </td>
+          <td class="px-4 py-3">
+            {% if not profile.active %}
+            <form class="inline" hx-post="/profiles/switch" hx-target="#profiles-panel" hx-swap="outerHTML">
+              <input type="hidden" name="token" value="{{ token }}">
+              <input type="hidden" name="profile_name" value="{{ profile.name }}">
+              <button class="table-button">Activate</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td class="px-4 py-6 text-zinc-600" colspan="8">No saved AI profiles yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+

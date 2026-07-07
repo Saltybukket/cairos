@@ -2,6 +2,16 @@
 
 This file records notable CAIROS changes by release.
 
+## 0.5.0a2
+
+- Added optional local FastAPI/HTMX/Tailwind GUI launched with `cairos gui`.
+- Added `cairos gui --check` for headless diagnostics.
+- Added GUI overview for config paths, AI profiles, provider setup, fallback
+  settings, doctor diagnostics, and update/backup guidance.
+- Added local-only GUI security model with session token checks and secret
+  masking.
+- Bumped release version to 0.5.0a2.
+
 ## 0.5.0a1
 
 - Added template confidence routing and `cairos plan --debug-route`.

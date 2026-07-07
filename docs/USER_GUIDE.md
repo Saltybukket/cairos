@@ -23,6 +23,7 @@ cairos diff <task>
 cairos explain <shell command>
 cairos check <shell command | natural language task>
 cairos context [--json]
+cairos gui [--check|--no-open]
 cairos config ...
 cairos rules ...
 cairos quicksetup
@@ -51,6 +52,18 @@ cairos run create folder docs
 
 For write actions, CAIROS asks for confirmation unless `--yes` is supplied.
 Critical commands remain blocked.
+
+## Optional Local GUI
+
+```bash
+cairos gui --check
+cairos gui
+cairos gui --no-open
+```
+
+The GUI is a local browser dashboard for overview status, AI profiles, provider
+setup, fallback settings, doctor diagnostics, and update/backup guidance. It
+binds to localhost and never displays raw API key values. See `docs/GUI.md`.
 
 ## Planning and Review
 

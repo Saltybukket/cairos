@@ -1,0 +1,22 @@
+<section id="update-panel">
+  {% include "partials/alerts.html" %}
+  <h1 class="text-2xl font-semibold">Updates & Backup</h1>
+  <div class="mt-6 grid gap-4 lg:grid-cols-2">
+    <div class="panel">
+      <div class="label">Current version</div>
+      <div class="value">{{ state.version }}</div>
+      <pre class="mt-4 whitespace-pre-wrap rounded-md bg-zinc-950 p-4 text-xs text-zinc-50">pipx upgrade cairos-shell
+# GitHub install:
+pipx uninstall cairos-shell
+pipx install git+https://github.com/Saltybukket/cairos.git</pre>
+    </div>
+    <div class="panel">
+      <div class="label">Config backup</div>
+      <div class="mt-2 text-sm text-zinc-600">{{ state.config_path }}</div>
+      <form class="mt-4" hx-post="/config/backup" hx-target="#update-panel" hx-swap="outerHTML">
+        <input type="hidden" name="token" value="{{ token }}">
+        <button class="primary-button">Backup Config</button>
+      </form>
+    </div>
+  </div>
+</section>

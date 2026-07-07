@@ -1,0 +1,25 @@
+<section id="doctor-panel">
+  {% include "partials/alerts.html" %}
+  <div class="flex items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold">Doctor</h1>
+      <p class="text-sm text-zinc-600">Local diagnostics without exposing secret values.</p>
+    </div>
+    <form hx-post="/doctor/run" hx-target="#doctor-panel" hx-swap="outerHTML">
+      <input type="hidden" name="token" value="{{ token }}">
+      <button class="primary-button">Run AI Test</button>
+    </form>
+  </div>
+  <div class="mt-6 grid gap-3 md:grid-cols-2">
+    {% for item in state.doctor_items %}
+    <div class="panel">
+      <div class="flex items-center justify-between gap-3">
+        <div class="font-medium">{{ item.label }}</div>
+        <span class="{{ 'badge-ok' if item.status == 'ok' else 'badge-warn' }}">{{ item.status }}</span>
+      </div>
+      <div class="mt-2 text-sm text-zinc-600">{{ item.detail }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
